@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">MAHMS</string>
+    <string name="splash_subtitle">Healthcare Management System</string>
+    <string name="splash_hospital">Mpilo Central</string>
+    <string name="splash_tagline">"Mpilo" means life</string>
+    <string name="notif_channel_name">Medication reminders</string>
+    <string name="notif_channel_desc">Daily reminders to take your medication</string>
+</resources>
