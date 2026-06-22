@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: white logo centered within the 66dp safe zone. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="50dp"
+        android:height="50dp"
+        android:gravity="center"
+        android:drawable="@drawable/mpilo_logo_white" />
+</layer-list>
