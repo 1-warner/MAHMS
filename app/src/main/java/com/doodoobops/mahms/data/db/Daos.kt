@@ -30,6 +30,19 @@ interface UserDao {
 
     @Query("SELECT COUNT(*) FROM users")
     suspend fun count(): Int
+
+    @Update
+    suspend fun update(user: UserEntity)
+
+    @Query("SELECT * FROM users ORDER BY fullName")
+    fun getAll(): Flow<List<UserEntity>>
+
+    /** Identity check for self-service password reset: email + registered phone. */
+    @Query("SELECT * FROM users WHERE email = :email AND phone = :phone LIMIT 1")
+    suspend fun findByEmailAndPhone(email: String, phone: String): UserEntity?
+
+    @Query("UPDATE users SET passwordHash = :hash WHERE userId = :userId")
+    suspend fun updatePassword(userId: Long, hash: String)
 }
 
 @Dao
@@ -173,6 +186,16 @@ interface PaymentDao {
 
     @Query("SELECT IFNULL(SUM(amount),0) FROM payments WHERE status = 'Completed' AND paymentDate = :date")
     fun revenueForDate(date: String): Flow<Double>
+
+    @Query("SELECT * FROM payments WHERE appointmentId = :appointmentId LIMIT 1")
+    suspend fun getByAppointment(appointmentId: Long): PaymentEntity?
+
+    /** Payments for every appointment belonging to one patient. */
+    @Query("SELECT p.* FROM payments p INNER JOIN appointments a ON a.appointmentId = p.appointmentId WHERE a.patientId = :patientId")
+    fun getByPatient(patientId: Long): Flow<List<PaymentEntity>>
+
+    @Update
+    suspend fun update(payment: PaymentEntity)
 }
 
 @Dao

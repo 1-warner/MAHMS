@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.doodoobops.mahms.domain.model.Demo
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.MahmsCard
 import com.doodoobops.mahms.ui.components.SectionHeader
@@ -42,9 +41,9 @@ fun PatientHomeScreen(
     onGoToTab: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val patient by container.patients.observe(Demo.PATIENT_ID).collectAsStateWithLifecycle(null)
-    val appts by container.appointments.byPatient(Demo.PATIENT_ID).collectAsStateWithLifecycle(emptyList())
-    val activeReminders by container.reminders.countActive(Demo.PATIENT_ID).collectAsStateWithLifecycle(0)
+    val patient by container.patients.observe(container.session.patientId).collectAsStateWithLifecycle(null)
+    val appts by container.appointments.byPatient(container.session.patientId).collectAsStateWithLifecycle(emptyList())
+    val activeReminders by container.reminders.countActive(container.session.patientId).collectAsStateWithLifecycle(0)
     val doctors by rememberDoctorMap()
 
     val upcoming = appts.filter { it.status in listOf("Pending", "Confirmed") && DateUtils.isFutureDate(it.appointmentDate) }

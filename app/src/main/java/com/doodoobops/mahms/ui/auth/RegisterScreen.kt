@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.doodoobops.mahms.data.repository.RegisterResult
 import com.doodoobops.mahms.domain.model.Role
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
@@ -127,12 +128,19 @@ fun RegisterScreen(onRegistered: () -> Unit, onHaveAccount: () -> Unit) {
                     loading = true
                     generalError = null
                     scope.launch {
-                        val existing = container.users.login(email, password)
-                        // crude existing-email check via findByEmail-less path: rely on register insert
-                        val id = container.users.register(name.trim(), email, ValidationUtils.normalizePhone(phone), password, role.label)
-                        container.session.isRegistered = true
+                        val result = container.users.register(
+                            name.trim(), email, ValidationUtils.normalizePhone(phone), password, role.label,
+                        )
                         loading = false
-                        if (id > 0 || existing != null) onRegistered() else generalError = "Could not create account"
+                        when (result) {
+                            is RegisterResult.Success -> {
+                                container.session.isRegistered = true
+                                onRegistered()
+                            }
+                            RegisterResult.EmailTaken ->
+                                generalError = "An account with this email already exists. Try signing in instead."
+                            is RegisterResult.Failed -> generalError = result.reason
+                        }
                     }
                 },
             )

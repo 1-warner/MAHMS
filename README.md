@@ -53,8 +53,8 @@ directly with a demo account (registration only gates the first-run routing, not
 com.doodoobops.mahms/
 ├── data/{entity,db,repository,seed}   Room layer + DatabaseSeeder
 ├── di/AppContainer                    manual DI container
-├── domain/model/Role                  roles + demo record bindings
-├── notifications/                     NotificationHelper + MedicationReminderWorker
+├── domain/model/Role                  the six MAHMS roles
+├── notifications/                     NotificationHelper + Medication/Appointment workers
 ├── navigation/{Screen,NavGraph}       routes + NavHost
 ├── ui/theme/                          Color · Type · Shape · Theme · StatusColors
 ├── ui/components/Components           shared composables (cards, buttons, chips, fields…)
@@ -69,13 +69,25 @@ Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, warm-grey ne
 12dp default radius, blue-grey shadows. Status chips are colour-coded
 (Pending=Warning, Confirmed=Primary, Completed/Resolved=Success, Cancelled=Neutral, Active=Danger).
 
+## Feature notes
+
+- **Accounts are linked to clinical records.** Registering as a Patient or Doctor creates the
+  matching `PatientEntity`/`DoctorEntity`, and the session carries those ids, so each account
+  sees its own appointments, prescriptions and alerts.
+- **Payments.** Patients settle the consultation fee (EcoCash / Cash / Medical Aid / Bank Card)
+  from the appointment card; admin revenue and reports read the same records.
+- **Password reset.** Self-service from the login screen (email + registered phone), plus an
+  administrator reset in **Admin → Accounts**.
+- **Reminders.** Booking an appointment schedules a reminder 24 hours ahead; medication
+  reminders are daily, and the reminder sheet's take/missed actions drive the adherence ring.
+- **SOS.** Requires a deliberate ~2s press-and-hold; releasing early cancels.
+
 ## Known simplifications (local MVP)
 
-- **Auth ↔ clinical records:** a Patient session reads seeded patient #1 and a Doctor session
-  reads doctor #1 (`domain/model/Role.kt` → `Demo`). A production build would link `UserEntity`
-  to a `PatientEntity`/`DoctorEntity`.
 - **Passwords** use SHA-256 (no salt) — adequate for a local demo only.
 - **Bottom-nav hosts** keep tab state in a `Scaffold` rather than nested navigation graphs.
-- **Orientation** is portrait-locked app-wide (the Admin-dashboard landscape exception is not wired up).
-- **Notifications/GPS** are placeholders; SOS location is mocked.
+- **Charts** are drawn with Canvas rather than Vico/MPAndroidChart, to keep the dependency
+  graph (and the build's memory footprint) small.
+- **GPS** is mocked; the SOS location is a placeholder string.
+- **No automated tests** yet.
 - All copy is English; isiNdebele + Shona are noted as pre-launch work.

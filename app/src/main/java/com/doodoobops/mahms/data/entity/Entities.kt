@@ -6,7 +6,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** App login account. Role drives post-login routing. */
-@Entity(tableName = "users")
+@Entity(
+    tableName = "users",
+    indices = [Index(value = ["email"], unique = true)],
+)
 data class UserEntity(
     @PrimaryKey(autoGenerate = true) val userId: Long = 0,
     val fullName: String,
@@ -15,6 +18,10 @@ data class UserEntity(
     val passwordHash: String,
     val role: String,
     val createdAt: Long = System.currentTimeMillis(),
+    /** Clinical record this account owns, when the role is Patient. */
+    val linkedPatientId: Long? = null,
+    /** Clinical record this account owns, when the role is Doctor. */
+    val linkedDoctorId: Long? = null,
 )
 
 @Entity(tableName = "patients")
@@ -137,6 +144,9 @@ data class MedicationReminderEntity(
     /** "HH:mm" 24-hour. */
     val reminderTime: String,
     val isActive: Boolean = true,
+    /** Adherence tracking: doses marked taken / missed from the reminder sheet. */
+    val takenCount: Int = 0,
+    val missedCount: Int = 0,
 )
 
 @Entity(tableName = "staff")

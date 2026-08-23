@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.doodoobops.mahms.domain.model.Demo
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
@@ -52,7 +51,7 @@ fun DoctorScheduleScreen(modifier: Modifier = Modifier) {
 
     val week = remember { currentWeek() }
     var selected by remember { mutableStateOf(DateUtils.todayStore().takeIf { it in week } ?: week.first()) }
-    val appts by container.appointments.byDoctorAndDate(Demo.DOCTOR_ID, selected).collectAsStateWithLifecycle(emptyList())
+    val appts by container.appointments.byDoctorAndDate(container.session.doctorId, selected).collectAsStateWithLifecycle(emptyList())
     val dow = remember { SimpleDateFormat("EEE", Locale.US) }
 
     Column(modifier.fillMaxSize()) {

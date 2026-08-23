@@ -49,7 +49,7 @@ object DateUtils {
         }
     }
 
-    fun currency(amount: Double): String = "USD %,.2f".format(amount)
+    fun currency(amount: Double): String = "USD %,.2f".format(Locale.US, amount)
 
     /** Last [days] store-format dates ending today, oldest first. */
     fun lastNDates(days: Int): List<String> {

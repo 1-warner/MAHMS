@@ -50,6 +50,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
     var submitted by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var showReset by remember { mutableStateOf(false) }
 
     val emailErr = ValidationUtils.emailError(email)
     val passEmpty = if (password.isBlank()) "Password is required" else null
@@ -100,7 +101,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         val user = container.users.login(email, password)
                         loading = false
                         if (user != null) {
-                            container.session.startSession(user.userId, user.role, user.fullName)
+                            container.session.startSession(
+                                user.userId, user.role, user.fullName,
+                                user.linkedPatientId, user.linkedDoctorId,
+                            )
                             onLoggedIn()
                         } else {
                             error = "Incorrect email or password"
@@ -109,9 +113,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 },
             )
 
-            TextButton(onClick = {
-                scope.launch { snackbar.showSnackbar("Contact your administrator") }
-            }) {
+            TextButton(onClick = { showReset = true }) {
                 Text("Forgot password?", color = MpiloBlue600)
             }
             Spacer(Modifier.height(Spacing.x4))
@@ -121,5 +123,15 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 color = Neutral500,
             )
         }
+    }
+
+    if (showReset) {
+        ForgotPasswordDialog(
+            onDismiss = { showReset = false },
+            onDone = { msg ->
+                showReset = false
+                scope.launch { snackbar.showSnackbar(msg) }
+            },
+        )
     }
 }
