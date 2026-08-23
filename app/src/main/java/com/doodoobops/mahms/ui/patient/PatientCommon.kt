@@ -22,6 +22,7 @@ import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.DataText
 import com.doodoobops.mahms.ui.components.MahmsCard
 import com.doodoobops.mahms.ui.components.MahmsStatusChip
+import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
 import com.doodoobops.mahms.ui.components.MahmsSecondaryButton
 import com.doodoobops.mahms.ui.theme.Neutral500
 import com.doodoobops.mahms.ui.theme.Neutral900
@@ -49,6 +50,8 @@ fun PatientAppointmentCard(
     doctor: DoctorEntity?,
     modifier: Modifier = Modifier,
     onCancel: (() -> Unit)? = null,
+    paid: Boolean? = null,
+    onPay: (() -> Unit)? = null,
 ) {
     MahmsCard(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -65,6 +68,22 @@ fun PatientAppointmentCard(
         if (appt.reason.isNotBlank()) {
             Spacer(Modifier.height(Spacing.x1))
             Text(appt.reason, style = MaterialTheme.typography.bodyMedium, color = Neutral500)
+        }
+        if (paid != null && appt.status != "Cancelled") {
+            Spacer(Modifier.height(Spacing.x3))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Consultation fee",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Neutral500,
+                    modifier = Modifier.weight(1f),
+                )
+                MahmsStatusChip(if (paid) "Completed" else "Pending")
+            }
+            if (!paid && onPay != null) {
+                Spacer(Modifier.height(Spacing.x2))
+                MahmsPrimaryButton("Pay now", onClick = onPay)
+            }
         }
         if (onCancel != null && (appt.status == "Pending" || appt.status == "Confirmed")) {
             Spacer(Modifier.height(Spacing.x3))

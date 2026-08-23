@@ -12,6 +12,15 @@ These six accounts are seeded into the local database on first launch
 | Pharmacist | `pharmacist@mpilo.co.zw` | `Password1` |
 | Emergency Responder | `responder@mpilo.co.zw` | `Password1` |
 
+## Forgot your password?
+
+Two routes, both in-app (there is no backend, so nothing is emailed or texted):
+
+1. **Self-service** — on the login screen tap **Forgot password?**, confirm the account's
+   email *and* its registered phone number, then set a new password.
+2. **Administrator** — sign in as `admin@mpilo.co.zw` and open **Accounts**, then
+   **Reset password** on the relevant user to set a temporary password for them.
+
 ## Notes
 - On a **fresh install** the app opens on the **Register** screen (the `is_registered`
   flag is false). Register any account once to flip the flag — or just sign in directly

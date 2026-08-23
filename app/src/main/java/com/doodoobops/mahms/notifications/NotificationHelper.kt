@@ -42,6 +42,24 @@ class NotificationHelper(private val context: Context) {
         NotificationManagerCompat.from(context).notify(id, notification)
     }
 
+    /** Appointment reminder, sharing the medication reminder channel. */
+    fun showAppointmentReminder(id: Int, doctorName: String, whenText: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_mpilo)
+            .setContentTitle("Mpilo Central · Appointment")
+            .setContentText("You see $doctorName on $whenText.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(id, notification)
+    }
+
     companion object {
         const val CHANNEL_ID = "medication_reminders"
     }

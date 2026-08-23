@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.PrescriptionEntity
-import com.doodoobops.mahms.domain.model.Demo
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
@@ -149,7 +148,7 @@ fun CreatePrescriptionScreen(modifier: Modifier = Modifier) {
                     scope.launch {
                         container.prescriptions.insert(
                             PrescriptionEntity(
-                                appointmentId = apptId!!, patientId = patientId!!, doctorId = Demo.DOCTOR_ID,
+                                appointmentId = apptId!!, patientId = patientId!!, doctorId = container.session.doctorId,
                                 medicationName = medName.trim(), dosage = dosage.trim(),
                                 frequency = frequency, duration = duration.trim(),
                                 issueDate = DateUtils.todayStore(),

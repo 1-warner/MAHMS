@@ -12,23 +12,74 @@ import com.doodoobops.mahms.data.db.UserDao
 import com.doodoobops.mahms.data.entity.AppointmentEntity
 import com.doodoobops.mahms.data.entity.EmergencyEntity
 import com.doodoobops.mahms.data.entity.MedicationReminderEntity
+import com.doodoobops.mahms.data.entity.DoctorEntity
 import com.doodoobops.mahms.data.entity.PatientEntity
+import com.doodoobops.mahms.data.entity.PaymentEntity
 import com.doodoobops.mahms.data.entity.PrescriptionEntity
 import com.doodoobops.mahms.data.entity.StaffEntity
 import com.doodoobops.mahms.data.entity.UserEntity
 import com.doodoobops.mahms.utils.hashPassword
 
-class UserRepository(private val dao: UserDao) {
-    suspend fun register(fullName: String, email: String, phone: String, password: String, role: String): Long =
-        dao.insert(
-            UserEntity(
-                fullName = fullName,
-                email = email.trim().lowercase(),
-                phone = phone,
-                passwordHash = hashPassword(password),
-                role = role,
+sealed interface RegisterResult {
+    data class Success(val userId: Long) : RegisterResult
+    data object EmailTaken : RegisterResult
+    data class Failed(val reason: String) : RegisterResult
+}
+
+class UserRepository(
+    private val dao: UserDao,
+    private val patientDao: PatientDao,
+    private val doctorDao: DoctorDao,
+) {
+    /**
+     * Creates an account and, for clinical roles, the matching clinical record so the
+     * session reads that person's real data instead of a shared demo record.
+     */
+    suspend fun register(
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String,
+        role: String,
+    ): RegisterResult {
+        val normalised = email.trim().lowercase()
+        if (dao.findByEmail(normalised) != null) return RegisterResult.EmailTaken
+
+        val first = fullName.trim().substringBefore(' ').ifBlank { fullName.trim() }
+        val last = fullName.trim().substringAfter(' ', "").ifBlank { "-" }
+
+        val patientId = if (role == "Patient") {
+            patientDao.insert(
+                PatientEntity(
+                    firstName = first, lastName = last, dateOfBirth = "", gender = "",
+                    phone = phone, email = normalised, address = "", emergencyContact = "",
+                )
             )
-        )
+        } else null
+
+        val doctorId = if (role == "Doctor") {
+            doctorDao.insert(
+                DoctorEntity(
+                    firstName = first, lastName = last,
+                    specialization = "General Practitioner", department = "Outpatient",
+                    phone = phone, email = normalised,
+                )
+            )
+        } else null
+
+        return try {
+            val id = dao.insert(
+                UserEntity(
+                    fullName = fullName.trim(), email = normalised, phone = phone,
+                    passwordHash = hashPassword(password), role = role,
+                    linkedPatientId = patientId, linkedDoctorId = doctorId,
+                )
+            )
+            if (id > 0) RegisterResult.Success(id) else RegisterResult.Failed("Could not create account")
+        } catch (e: Exception) {
+            RegisterResult.Failed("Could not create account")
+        }
+    }
 
     /** Returns the user when email+password match, else null. */
     suspend fun login(email: String, password: String): UserEntity? {
@@ -36,6 +87,14 @@ class UserRepository(private val dao: UserDao) {
         return if (user.passwordHash == hashPassword(password)) user else null
     }
 
+    /** Self-service reset: proves identity with the registered email + phone. */
+    suspend fun verifyIdentity(email: String, phone: String): UserEntity? =
+        dao.findByEmailAndPhone(email.trim().lowercase(), phone.trim())
+
+    suspend fun setPassword(userId: Long, newPassword: String) =
+        dao.updatePassword(userId, hashPassword(newPassword))
+
+    fun all() = dao.getAll()
     suspend fun getById(id: Long) = dao.findById(id)
     suspend fun count() = dao.count()
 }
@@ -94,6 +153,10 @@ class EmergencyRepository(private val dao: EmergencyDao) {
 class PaymentRepository(private val dao: PaymentDao) {
     fun all() = dao.getAll()
     fun revenueForDate(date: String) = dao.revenueForDate(date)
+    fun byPatient(patientId: Long) = dao.getByPatient(patientId)
+    suspend fun forAppointment(appointmentId: Long) = dao.getByAppointment(appointmentId)
+    suspend fun insert(p: PaymentEntity) = dao.insert(p)
+    suspend fun update(p: PaymentEntity) = dao.update(p)
 }
 
 class ReminderRepository(private val dao: MedicationReminderDao) {

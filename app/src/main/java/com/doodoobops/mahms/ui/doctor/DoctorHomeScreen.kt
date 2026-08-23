@@ -18,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.doodoobops.mahms.domain.model.Demo
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
@@ -37,8 +36,8 @@ import com.doodoobops.mahms.utils.DateUtils
 fun DoctorHomeScreen(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
     val today = DateUtils.todayStore()
-    val todayAppts by container.appointments.byDoctorAndDate(Demo.DOCTOR_ID, today).collectAsStateWithLifecycle(emptyList())
-    val rxToday by container.prescriptions.countForDoctorOnDate(Demo.DOCTOR_ID, today).collectAsStateWithLifecycle(0)
+    val todayAppts by container.appointments.byDoctorAndDate(container.session.doctorId, today).collectAsStateWithLifecycle(emptyList())
+    val rxToday by container.prescriptions.countForDoctorOnDate(container.session.doctorId, today).collectAsStateWithLifecycle(0)
     val patients by rememberPatientMap()
 
     Column(modifier.fillMaxSize()) {

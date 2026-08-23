@@ -32,19 +32,23 @@ object DatabaseSeeder {
 
     private suspend fun seed(db: MahmsDatabase) {
         // ---- Demo login accounts (one per role) ----
+        // Demo accounts are linked to the seeded clinical records below, so signing in
+        // as the demo patient/doctor shows that person's real data.
+        data class Demo(val name: String, val email: String, val role: String, val pid: Long?, val did: Long?)
         val accounts = listOf(
-            Triple("Thabo Moyo", "patient@mpilo.co.zw", "Patient"),
-            Triple("Dr Sibusiso Moyo", "doctor@mpilo.co.zw", "Doctor"),
-            Triple("Sr Lindiwe Ndlovu", "nurse@mpilo.co.zw", "Nurse"),
-            Triple("Admin Office", "admin@mpilo.co.zw", "Hospital Administrator"),
-            Triple("Pharmacy 03", "pharmacist@mpilo.co.zw", "Pharmacist"),
-            Triple("Casualty Desk", "responder@mpilo.co.zw", "Emergency Responder"),
+            Demo("Thabo Moyo", "patient@mpilo.co.zw", "Patient", 1L, null),
+            Demo("Dr Sibusiso Moyo", "doctor@mpilo.co.zw", "Doctor", null, 1L),
+            Demo("Sr Lindiwe Ndlovu", "nurse@mpilo.co.zw", "Nurse", null, null),
+            Demo("Admin Office", "admin@mpilo.co.zw", "Hospital Administrator", null, null),
+            Demo("Pharmacy 03", "pharmacist@mpilo.co.zw", "Pharmacist", null, null),
+            Demo("Casualty Desk", "responder@mpilo.co.zw", "Emergency Responder", null, null),
         )
-        accounts.forEachIndexed { i, (name, email, role) ->
+        accounts.forEachIndexed { i, a ->
             db.userDao().insert(
                 UserEntity(
-                    fullName = name, email = email, phone = "+26377234567$i",
-                    passwordHash = hashPassword("Password1"), role = role,
+                    fullName = a.name, email = a.email, phone = "+26377234567$i",
+                    passwordHash = hashPassword("Password1"), role = a.role,
+                    linkedPatientId = a.pid, linkedDoctorId = a.did,
                 )
             )
         }
@@ -91,8 +95,8 @@ object DatabaseSeeder {
         rx.forEach { db.prescriptionDao().insert(it) }
 
         // ---- Medication reminders ----
-        db.reminderDao().insert(MedicationReminderEntity(prescriptionId = 1, patientId = 1, medicationName = "Atenolol", dosage = "50 mg", reminderTime = "08:00", isActive = true))
-        db.reminderDao().insert(MedicationReminderEntity(prescriptionId = 2, patientId = 1, medicationName = "Amoxicillin", dosage = "500 mg", reminderTime = "20:00", isActive = true))
+        db.reminderDao().insert(MedicationReminderEntity(prescriptionId = 1, patientId = 1, medicationName = "Atenolol", dosage = "50 mg", reminderTime = "08:00", isActive = true, takenCount = 28, missedCount = 2))
+        db.reminderDao().insert(MedicationReminderEntity(prescriptionId = 2, patientId = 1, medicationName = "Amoxicillin", dosage = "500 mg", reminderTime = "20:00", isActive = true, takenCount = 27, missedCount = 3))
 
         // ---- Emergencies (1 active, 1 resolved) ----
         db.emergencyDao().insert(

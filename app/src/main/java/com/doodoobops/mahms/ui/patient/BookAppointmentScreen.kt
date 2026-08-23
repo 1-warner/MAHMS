@@ -39,7 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.AppointmentEntity
-import com.doodoobops.mahms.domain.model.Demo
+import com.doodoobops.mahms.notifications.AppointmentReminderWorker
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.DataText
 import com.doodoobops.mahms.ui.components.MahmsCard
@@ -67,6 +67,7 @@ private val SLOTS = buildList {
 fun BookAppointmentScreen(onDone: () -> Unit, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val departments by container.doctors.departments().collectAsStateWithLifecycle(emptyList())
 
@@ -175,15 +176,23 @@ fun BookAppointmentScreen(onDone: () -> Unit, onBack: () -> Unit) {
                 onClick = {
                     saving = true
                     scope.launch {
-                        container.appointments.insert(
+                        val newId = container.appointments.insert(
                             AppointmentEntity(
-                                patientId = Demo.PATIENT_ID,
+                                patientId = container.session.patientId,
                                 doctorId = selectedDoctorId!!,
                                 appointmentDate = date!!,
                                 appointmentTime = slot!!,
                                 status = "Pending",
                                 reason = reason.trim(),
                             )
+                        )
+                        // Spec: schedule the reminder notification when the booking is made.
+                        AppointmentReminderWorker.schedule(
+                            context = context,
+                            appointmentId = newId,
+                            doctorName = "Dr ${selectedDoctor!!.firstName} ${selectedDoctor.lastName}",
+                            date = date!!,
+                            time = slot!!,
                         )
                         saving = false
                         onDone()

@@ -27,12 +27,30 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_NAME, null)
         private set(value) = prefs.edit().putString(KEY_NAME, value).apply()
 
+    /** Clinical record owned by the signed-in account (Patient role). */
+    var patientId: Long
+        get() = prefs.getLong(KEY_PATIENT_ID, 1L)
+        private set(value) = prefs.edit().putLong(KEY_PATIENT_ID, value).apply()
+
+    /** Clinical record owned by the signed-in account (Doctor role). */
+    var doctorId: Long
+        get() = prefs.getLong(KEY_DOCTOR_ID, 1L)
+        private set(value) = prefs.edit().putLong(KEY_DOCTOR_ID, value).apply()
+
     val isLoggedIn: Boolean get() = currentUserId >= 0
 
-    fun startSession(userId: Long, role: String, name: String) {
+    fun startSession(
+        userId: Long,
+        role: String,
+        name: String,
+        linkedPatientId: Long? = null,
+        linkedDoctorId: Long? = null,
+    ) {
         currentUserId = userId
         currentRole = role
         currentName = name
+        patientId = linkedPatientId ?: 1L
+        doctorId = linkedDoctorId ?: 1L
     }
 
     fun endSession() {
@@ -40,6 +58,8 @@ class SessionManager(context: Context) {
             .remove(KEY_USER_ID)
             .remove(KEY_ROLE)
             .remove(KEY_NAME)
+            .remove(KEY_PATIENT_ID)
+            .remove(KEY_DOCTOR_ID)
             .apply()
     }
 
@@ -48,5 +68,7 @@ class SessionManager(context: Context) {
         private const val KEY_USER_ID = "current_user_id"
         private const val KEY_ROLE = "current_role"
         private const val KEY_NAME = "current_name"
+        private const val KEY_PATIENT_ID = "current_patient_id"
+        private const val KEY_DOCTOR_ID = "current_doctor_id"
     }
 }

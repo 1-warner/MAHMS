@@ -21,7 +21,7 @@ class AppContainer(context: Context) {
     val session = SessionManager(context)
     val notifications = NotificationHelper(context)
 
-    val users = UserRepository(db.userDao())
+    val users = UserRepository(db.userDao(), db.patientDao(), db.doctorDao())
     val patients = PatientRepository(db.patientDao())
     val doctors = DoctorRepository(db.doctorDao())
     val appointments = AppointmentRepository(db.appointmentDao())

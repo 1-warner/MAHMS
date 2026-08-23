@@ -15,12 +15,3 @@ enum class Role(val label: String) {
     }
 }
 
-/**
- * For this local-only build, clinical screens bind to seeded records:
- * a patient session reads patient #1, a doctor session reads doctor #1.
- * A real build would link UserEntity to a PatientEntity/DoctorEntity.
- */
-object Demo {
-    const val PATIENT_ID = 1L
-    const val DOCTOR_ID = 1L
-}
