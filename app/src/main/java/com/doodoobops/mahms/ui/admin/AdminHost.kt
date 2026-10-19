@@ -5,7 +5,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -22,7 +21,6 @@ import com.doodoobops.mahms.ui.theme.Neutral25
 private val tabs = listOf(
     BottomNavItem("dashboard", "Dashboard", Icons.Filled.BarChart),
     BottomNavItem("staff", "Staff", Icons.Filled.Badge),
-    BottomNavItem("accounts", "Accounts", Icons.Filled.ManageAccounts),
     BottomNavItem("reports", "Reports", Icons.Filled.Description),
     BottomNavItem("profile", "Profile", Icons.Filled.Person),
 )
@@ -38,7 +36,6 @@ fun AdminHost(onLogout: () -> Unit) {
         when (tab) {
             "dashboard" -> AdminDashboardScreen(m)
             "staff" -> AdminStaffScreen(m)
-            "accounts" -> AdminAccountsScreen(m)
             "reports" -> AdminReportsScreen(m)
             "profile" -> RoleProfileScreen(m, onLogout)
         }

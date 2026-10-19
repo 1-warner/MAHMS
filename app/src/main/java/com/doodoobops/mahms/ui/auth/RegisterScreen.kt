@@ -33,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.doodoobops.mahms.data.repository.RegisterResult
+import com.doodoobops.mahms.data.cloud.AuthOutcome
 import com.doodoobops.mahms.domain.model.Role
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
@@ -58,8 +58,9 @@ fun RegisterScreen(onRegistered: () -> Unit, onHaveAccount: () -> Unit) {
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf(Role.PATIENT) }
-    var roleExpanded by remember { mutableStateOf(false) }
+    // Self-registration is for patients only. Hospital staff accounts are issued by the administrator,
+    // so nobody can sign themselves up as a doctor or administrator.
+    val role = Role.PATIENT
 
     var submitted by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
@@ -96,24 +97,11 @@ fun RegisterScreen(onRegistered: () -> Unit, onHaveAccount: () -> Unit) {
             MahmsTextField("Password", password, { password = it }, error = show(passErr), isPassword = true)
             MahmsTextField("Confirm password", confirm, { confirm = it }, error = show(confirmErr), isPassword = true)
 
-            ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
-                OutlinedTextField(
-                    value = role.label,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Role") },
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                    shape = Radii.md,
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
-                )
-                ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
-                    Role.all.forEach { r ->
-                        DropdownMenuItem(text = { Text(r.label) }, onClick = {
-                            role = r; roleExpanded = false
-                        })
-                    }
-                }
-            }
+            Text(
+                "This creates a Patient account. Hospital staff accounts are issued by the administrator.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Neutral500,
+            )
 
             generalError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
@@ -128,18 +116,16 @@ fun RegisterScreen(onRegistered: () -> Unit, onHaveAccount: () -> Unit) {
                     loading = true
                     generalError = null
                     scope.launch {
-                        val result = container.users.register(
+                        val outcome = container.authRepo.register(
                             name.trim(), email, ValidationUtils.normalizePhone(phone), password, role.label,
                         )
                         loading = false
-                        when (result) {
-                            is RegisterResult.Success -> {
+                        when (outcome) {
+                            is AuthOutcome.Success -> {
                                 container.session.isRegistered = true
                                 onRegistered()
                             }
-                            RegisterResult.EmailTaken ->
-                                generalError = "An account with this email already exists. Try signing in instead."
-                            is RegisterResult.Failed -> generalError = result.reason
+                            is AuthOutcome.Failure -> generalError = outcome.message
                         }
                     }
                 },

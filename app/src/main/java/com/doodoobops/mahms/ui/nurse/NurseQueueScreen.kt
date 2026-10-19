@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
 import com.doodoobops.mahms.ui.components.DataText
@@ -65,7 +66,10 @@ fun NurseQueueScreen(modifier: Modifier = Modifier) {
                         }
                         Spacer(Modifier.height(Spacing.x3))
                         MahmsSecondaryButton("Mark arrived", onClick = {
-                            scope.launch { container.appointments.update(a.copy(status = "Completed")) }
+                            scope.launch {
+                                AppLog.i("Nurse", "Appointment ${a.appointmentId} marked arrived")
+                                container.appointments.update(a.copy(status = "Completed"))
+                            }
                         })
                     }
                 }

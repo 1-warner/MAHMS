@@ -2,7 +2,6 @@ package com.doodoobops.mahms.ui.patient
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.doodoobops.mahms.navigation.Screen
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
+import com.doodoobops.mahms.ui.LocalNavController
 import com.doodoobops.mahms.ui.components.InitialsAvatar
 import com.doodoobops.mahms.ui.components.LabeledValue
 import com.doodoobops.mahms.ui.components.MahmsCard
@@ -42,16 +44,8 @@ import kotlinx.coroutines.launch
 fun PatientProfileScreen(modifier: Modifier = Modifier, onLogout: () -> Unit) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
-    val patient by container.patients.observe(container.session.patientId).collectAsStateWithLifecycle(null)
-    val reminders by container.reminders.byPatient(container.session.patientId)
-        .collectAsStateWithLifecycle(emptyList())
+    val patient by container.patients.observe(container.session.currentPatientId).collectAsStateWithLifecycle(null)
     var editing by remember { mutableStateOf(false) }
-
-    // Adherence = doses marked taken over all doses recorded from the reminder sheet.
-    val taken = reminders.sumOf { it.takenCount }
-    val missed = reminders.sumOf { it.missedCount }
-    val logged = taken + missed
-    val adherence = if (logged == 0) 0 else (taken * 100) / logged
 
     Column(modifier.fillMaxSize()) {
         MahmsTopBar("Profile")
@@ -66,44 +60,20 @@ fun PatientProfileScreen(modifier: Modifier = Modifier, onLogout: () -> Unit) {
             Text("${p?.firstName ?: ""} ${p?.lastName ?: ""}", style = MaterialTheme.typography.headlineSmall, color = Neutral900)
             Text(p?.email ?: "", style = MaterialTheme.typography.bodyMedium, color = Neutral500)
 
-            if (logged > 0) {
-                MahmsCard {
-                    Text(
-                        "MEDICATION ADHERENCE",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Neutral500,
-                    )
-                    Spacer(Modifier.height(Spacing.x3))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AdherenceRing(adherence)
-                        Column(Modifier.padding(start = Spacing.x4)) {
-                            Text(
-                                if (adherence >= 80) "On track" else "Needs attention",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = Neutral900,
-                            )
-                            Spacer(Modifier.height(Spacing.x1))
-                            Text(
-                                "You have taken $taken of $logged doses on time.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Neutral500,
-                            )
-                        }
-                    }
-                }
-            }
-
             MahmsCard {
-                LabeledValue("Phone", p?.phone ?: "—", mono = true)
+                LabeledValue("Phone", p?.phone?.ifBlank { "—" } ?: "—", mono = true)
                 Spacer(Modifier.height(Spacing.x3))
-                LabeledValue("Date of birth", p?.dateOfBirth ?: "—", mono = true)
+                LabeledValue("Date of birth", p?.dateOfBirth?.ifBlank { "—" } ?: "—", mono = true)
                 Spacer(Modifier.height(Spacing.x3))
-                LabeledValue("Address", p?.address ?: "—")
+                LabeledValue("Address", p?.address?.ifBlank { "—" } ?: "—")
                 Spacer(Modifier.height(Spacing.x3))
-                LabeledValue("Emergency contact", p?.emergencyContact ?: "—", mono = true)
+                LabeledValue("Emergency contact", p?.emergencyContact?.ifBlank { "—" } ?: "—", mono = true)
             }
 
             MahmsSecondaryButton("Edit profile", onClick = { editing = true }, enabled = p != null)
+            val nav = LocalNavController.current
+            MahmsSecondaryButton("Settings", onClick = { nav?.navigate(Screen.Settings.route) })
+            MahmsSecondaryButton("Help and user guide", onClick = { nav?.navigate(Screen.Help.route) })
             MahmsDangerButton("Log out", onClick = onLogout)
             Spacer(Modifier.height(Spacing.x6))
         }
@@ -119,6 +89,7 @@ fun PatientProfileScreen(modifier: Modifier = Modifier, onLogout: () -> Unit) {
             confirmButton = {
                 MahmsPrimaryButton("Save", onClick = {
                     scope.launch {
+                        AppLog.i("Profile", "Patient ${p.patientId} updated their profile")
                         container.patients.update(p.copy(phone = phone, address = address, emergencyContact = contact))
                         editing = false
                     }

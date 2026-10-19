@@ -7,6 +7,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.doodoobops.mahms.utils.AppLog
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -23,6 +24,7 @@ class MedicationReminderWorker(
         val name = inputData.getString(KEY_NAME) ?: return Result.success()
         val dosage = inputData.getString(KEY_DOSAGE) ?: ""
         val id = inputData.getInt(KEY_ID, name.hashCode())
+        AppLog.i("Reminder", "Reminder $id fired")
         NotificationHelper(applicationContext).showReminder(id, name, dosage)
         return Result.success()
     }
@@ -45,6 +47,7 @@ class MedicationReminderWorker(
                     )
                 )
                 .build()
+            AppLog.i("Reminder", "Scheduled daily reminder $reminderId at $hhmm")
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 "reminder_$reminderId",
                 ExistingPeriodicWorkPolicy.UPDATE,
@@ -53,6 +56,7 @@ class MedicationReminderWorker(
         }
 
         fun cancel(context: Context, reminderId: Long) {
+            AppLog.i("Reminder", "Cancelled reminder $reminderId")
             WorkManager.getInstance(context).cancelUniqueWork("reminder_$reminderId")
         }
 

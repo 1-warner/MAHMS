@@ -12,16 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.content.pm.ActivityInfo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +36,6 @@ import com.doodoobops.mahms.utils.DateUtils
 @Composable
 fun AdminDashboardScreen(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
-    AllowLandscapeWhileVisible()
     val today = DateUtils.todayStore()
     val totalPatients by container.patients.count().collectAsStateWithLifecycle(0)
     val todaysAppts by container.appointments.countForDate(today).collectAsStateWithLifecycle(0)
@@ -87,29 +80,4 @@ private fun SummaryCard(label: String, value: String, accent: Color, modifier: M
         if (mono) DataText(value, color = accent, fontSize = 18.sp)
         else Text(value, style = MaterialTheme.typography.headlineSmall, color = accent)
     }
-}
-
-/**
- * The rest of the app is portrait-locked; the dashboard releases that lock so the
- * charts can be read in landscape, and restores it on the way out.
- */
-@Composable
-private fun AllowLandscapeWhileVisible() {
-    val context = LocalContext.current
-    DisposableEffect(Unit) {
-        val activity = context.findActivity()
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-    }
-}
-
-private fun Context.findActivity(): Activity? {
-    var ctx = this
-    while (ctx is ContextWrapper) {
-        if (ctx is Activity) return ctx
-        ctx = ctx.baseContext
-    }
-    return null
 }

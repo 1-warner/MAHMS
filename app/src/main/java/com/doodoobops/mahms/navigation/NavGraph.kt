@@ -1,11 +1,16 @@
 package com.doodoobops.mahms.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.doodoobops.mahms.domain.model.Role
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.ui.LocalNavController
+import com.doodoobops.mahms.utils.AppLog
+import com.doodoobops.mahms.ui.help.HelpScreen
+import com.doodoobops.mahms.ui.settings.SettingsScreen
 import com.doodoobops.mahms.ui.admin.AdminHost
 import com.doodoobops.mahms.ui.auth.LoginScreen
 import com.doodoobops.mahms.ui.auth.PostSplashScreen
@@ -31,6 +36,8 @@ fun MahmsNavGraph(navController: NavHostController) {
     }
 
     fun logout() {
+        AppLog.i("Session", "User logged out")
+        container.authRepo.signOut()
         session.endSession()
         navController.navigate(Screen.Login.route) {
             popUpTo(0) { inclusive = true }
@@ -38,6 +45,7 @@ fun MahmsNavGraph(navController: NavHostController) {
         }
     }
 
+    CompositionLocalProvider(LocalNavController provides navController) {
     NavHost(navController = navController, startDestination = Screen.Splash.route) {
 
         composable(Screen.Splash.route) {
@@ -87,8 +95,20 @@ fun MahmsNavGraph(navController: NavHostController) {
         composable(Screen.PharmacistHome.route) { PharmacistHost(onLogout = ::logout) }
         composable(Screen.ResponderHome.route) { ResponderHost(onLogout = ::logout) }
 
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenHelp = { navController.navigate(Screen.Help.route) },
+                onLogout = ::logout,
+            )
+        }
+        composable(Screen.Help.route) {
+            HelpScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(Screen.BookAppointment.route) {
             BookAppointmentScreen(onDone = { navController.popBackStack() }, onBack = { navController.popBackStack() })
         }
+    }
     }
 }

@@ -9,7 +9,7 @@ import android.content.Context
  */
 class SessionManager(context: Context) {
 
-    private val prefs = context.getSharedPreferences("mahms_session", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     var isRegistered: Boolean
         get() = prefs.getBoolean(KEY_REGISTERED, false)
@@ -27,30 +27,29 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_NAME, null)
         private set(value) = prefs.edit().putString(KEY_NAME, value).apply()
 
-    /** Clinical record owned by the signed-in account (Patient role). */
-    var patientId: Long
-        get() = prefs.getLong(KEY_PATIENT_ID, 1L)
+    /** Patient record (patients.patientId) that belongs to the signed-in Patient, or -1. */
+    var currentPatientId: Long
+        get() = prefs.getLong(KEY_PATIENT_ID, -1L)
         private set(value) = prefs.edit().putLong(KEY_PATIENT_ID, value).apply()
 
-    /** Clinical record owned by the signed-in account (Doctor role). */
-    var doctorId: Long
-        get() = prefs.getLong(KEY_DOCTOR_ID, 1L)
+    /** Doctor record (doctors.doctorId) that belongs to the signed-in Doctor, or -1. */
+    var currentDoctorId: Long
+        get() = prefs.getLong(KEY_DOCTOR_ID, -1L)
         private set(value) = prefs.edit().putLong(KEY_DOCTOR_ID, value).apply()
+
+    /** Settings toggle: when false, medication reminder notifications are suppressed. */
+    var notificationsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFICATIONS, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIFICATIONS, value).apply()
 
     val isLoggedIn: Boolean get() = currentUserId >= 0
 
-    fun startSession(
-        userId: Long,
-        role: String,
-        name: String,
-        linkedPatientId: Long? = null,
-        linkedDoctorId: Long? = null,
-    ) {
+    fun startSession(userId: Long, role: String, name: String, patientId: Long = -1L, doctorId: Long = -1L) {
         currentUserId = userId
         currentRole = role
         currentName = name
-        patientId = linkedPatientId ?: 1L
-        doctorId = linkedDoctorId ?: 1L
+        currentPatientId = patientId
+        currentDoctorId = doctorId
     }
 
     fun endSession() {
@@ -64,6 +63,8 @@ class SessionManager(context: Context) {
     }
 
     companion object {
+        const val PREFS = "mahms_session"
+        const val KEY_NOTIFICATIONS = "notifications_enabled"
         private const val KEY_REGISTERED = "is_registered"
         private const val KEY_USER_ID = "current_user_id"
         private const val KEY_ROLE = "current_role"

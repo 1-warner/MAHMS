@@ -41,9 +41,9 @@ fun PatientHomeScreen(
     onGoToTab: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val patient by container.patients.observe(container.session.patientId).collectAsStateWithLifecycle(null)
-    val appts by container.appointments.byPatient(container.session.patientId).collectAsStateWithLifecycle(emptyList())
-    val activeReminders by container.reminders.countActive(container.session.patientId).collectAsStateWithLifecycle(0)
+    val patient by container.patients.observe(container.session.currentPatientId).collectAsStateWithLifecycle(null)
+    val appts by container.appointments.byPatient(container.session.currentPatientId).collectAsStateWithLifecycle(emptyList())
+    val activeReminders by container.reminders.countActive(container.session.currentPatientId).collectAsStateWithLifecycle(0)
     val doctors by rememberDoctorMap()
 
     val upcoming = appts.filter { it.status in listOf("Pending", "Confirmed") && DateUtils.isFutureDate(it.appointmentDate) }

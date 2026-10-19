@@ -1,22 +1,29 @@
-# Gradle
-.gradle/
-build/
-app/build/
-
-# Local config (machine-specific SDK path — never commit)
-local.properties
-
-# Android Studio / IntelliJ
-.idea/
 *.iml
-.cxx/
-captures/
-
-# Logs & JVM crash dumps
-*.log
-hs_err_pid*.log
-replay_pid*.log
-
-# OS
+.gradle/
+/local.properties
+/.idea/
 .DS_Store
-Thumbs.db
+/build
+build/
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+!debug.keystore
+.kotlin/
+.claude/
+
+# The rubric forbids zip archives in the repository.
+*.zip
+
+# Firebase config and keys. See FIREBASE_SETUP.md.
+/app/google-services.json
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# Node (the API and any web tooling)
+node_modules/
+.env

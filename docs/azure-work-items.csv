@@ -1,0 +1,63 @@
+Work Item Type,Title,Description,State,Iteration Path,Tags
+Epic,Project setup and planning,Task 1 deliverables and the repository skeleton.,Done,MAHMS\Week 1,Planning
+Issue,"Finalise updated project plan, site map and wireframes","Part B, D and E of the combined report.",Done,MAHMS\Week 1,Planning;Documentation
+Issue,Initialise the GitHub repository with README and folder structure,"Repository, .gitignore, README, branch strategy.",Done,MAHMS\Week 1,DevOps
+Issue,Agree the branching and commit-message convention,"main stable, dev integration, feature branches. Commits reference the work item with #ID.",Done,MAHMS\Week 1,DevOps
+Epic,Database and authentication,The foundation every other sub-system depends on.,Done,MAHMS\Week 2,Backend;Mobile
+Issue,Implement the database schema,"Nine related Room tables with primary and foreign keys, mirrored to Cloud Firestore.",Done,MAHMS\Week 2,Database;Mobile
+Issue,Seed at least ten records per table,DatabaseSeeder fills every table on first launch.,Done,MAHMS\Week 2,Database;Mobile
+Issue,Build patient registration with validation,"Email, phone and password rules, with field-level errors. Patient accounts only.",Done,MAHMS\Week 3,Mobile;Auth
+Issue,Integrate Firebase Authentication for email and password sign-in,"Online identity provider, salted hash held by the service.",Done,MAHMS\Week 3,Mobile;Auth
+Issue,Add Google single sign-on through Credential Manager,Continue with Google on the login screen.,Done,MAHMS\Week 3,Mobile;Auth
+Issue,Add an offline sign-in fallback,Local cached account so a known user can sign in without internet.,Done,MAHMS\Week 3,Mobile;Auth
+Issue,Write Firestore security rules,"Role immutable, collections allow-listed, staff-only writes for doctors and staff.",Done,MAHMS\Week 3,Security
+Epic,Patient and appointment management,,Done,MAHMS\Week 4,Mobile
+Issue,Build the patient profile screen,View and edit the signed-in patient's own details.,Done,MAHMS\Week 4,Mobile
+Issue,Link each account to its own patient or doctor record,AppContainer.startLinkedSession replaces the fixed demo ids.,Done,MAHMS\Week 4,Mobile
+Issue,Build the book-appointment flow,"Choose department, doctor, date and time, give a reason.",Done,MAHMS\Week 5,Mobile
+Issue,Build the patient appointments list,Upcoming and past appointments with status.,Done,MAHMS\Week 5,Mobile
+Issue,Build the doctor schedule and records screens,Doctor sees the day's list and patient records.,Done,MAHMS\Week 5,Mobile
+Issue,Build the nurse queue and vitals screens,,Done,MAHMS\Week 5,Mobile
+Epic,E-prescription and payment,,Done,MAHMS\Week 6,Mobile
+Issue,Build the create-prescription screen for doctors,,Done,MAHMS\Week 6,Mobile
+Issue,Build the patient prescriptions list with medication reminders,Daily reminder scheduled with WorkManager.,Done,MAHMS\Week 6,Mobile
+Issue,Build the pharmacist dispensing screen,,Done,MAHMS\Week 6,Mobile
+Issue,Build the payments tab with a simulated gateway,"EcoCash, Card or Cash. Consultation fee by specialisation.",Done,MAHMS\Week 7,Mobile
+Issue,Generate a numbered receipt and save it as PDF,Receipt number RCP-yyyy-NNNNN.,Done,MAHMS\Week 7,Mobile
+Epic,Emergency SOS and reporting,,Done,MAHMS\Week 8,Mobile
+Issue,Build the emergency SOS button,Alert is sent even when the location permission is refused.,Done,MAHMS\Week 8,Mobile
+Issue,Add real GPS position to the SOS alert,LocationProvider using the built-in LocationManager.,Done,MAHMS\Week 8,Mobile
+Issue,Turn the GPS point into a street address,OpenStreetMap Nominatim reverse-geocoding REST API.,Done,MAHMS\Week 8,Mobile;API
+Issue,Build the responder dashboard with open-in-maps,,Done,MAHMS\Week 8,Mobile
+Issue,Build the admin dashboard and reports,Appointment counts and revenue charts.,Done,MAHMS\Week 8,Mobile
+Epic,Online services and the team REST API,"The API the team wrote, and the app talking to it.",Doing,MAHMS\Week 6,Backend;API
+Issue,Implement two-way Cloud Firestore synchronisation,"Pull with a non-destructive upsert, then push.",Done,MAHMS\Week 6,Backend;Mobile
+Issue,Design the PostgreSQL schema for the API,"Twelve tables with UUID keys, constraints and a receipt-number sequence.",Done,MAHMS\Week 7,Backend;Database
+Issue,Write the seed data for the API database,"At least ten rows per table, matching the app's seeder.",Done,MAHMS\Week 7,Backend;Database
+Issue,Build the Express API with Firebase token verification,"Bearer ID token verified with firebase-admin, mapped to a users row and a role.",Done,MAHMS\Week 7,Backend;API;Security
+Issue,"Implement the appointment, prescription, payment and emergency endpoints",,Done,MAHMS\Week 8,Backend;API
+Issue,Enforce per-patient scoping and role checks in the API,A patient can only ever read and write their own records.,Done,MAHMS\Week 8,Backend;Security
+Issue,Write the OpenAPI description and the API README,,Done,MAHMS\Week 8,Backend;Documentation
+Issue,Add automated API tests with supertest,"Route, authentication, scoping and validation tests against a real PostgreSQL database.",Done,MAHMS\Week 9,Backend;Testing
+Issue,Add an API client to the Android app,MahmsApi sends the Firebase ID token and mirrors writes to the server.,Doing,MAHMS\Week 9,Mobile;API
+Issue,Show the server status in Settings,Driven by GET /health.,Doing,MAHMS\Week 9,Mobile;API
+Issue,Deploy the API and its database,"Render, Railway or Fly.io free tier with managed PostgreSQL.",To Do,MAHMS\Week 10,Backend;DevOps
+Epic,Website,Public site and patient pages built from the Part E wireframes.,To Do,MAHMS\Week 9,Web
+Issue,Confirm the website framework with the web developer,,To Do,MAHMS\Week 9,Web;Planning
+Issue,Build the public website pages,"Home, services and contact.",To Do,MAHMS\Week 9,Web
+Issue,Build the patient login and appointment list on the website,"Signs in with Firebase, reads the team API.",To Do,MAHMS\Week 10,Web;API
+Issue,Add the website build to the CI pipeline,,To Do,MAHMS\Week 10,Web;DevOps
+Epic,"Testing, DevOps and delivery",,Doing,MAHMS\Week 9,Testing;DevOps
+Issue,Write unit tests for the app helpers,"Validation, hashing, dates, roles, billing, geo and cloud mappers.",Done,MAHMS\Week 9,Testing;Mobile
+Issue,Set up the GitHub Actions workflow,Runs the unit tests and builds the debug APK on every push.,Done,MAHMS\Week 9,DevOps;Testing
+Issue,Set up the Azure Pipelines build,Mirrors the GitHub workflow for Android and the API.,Doing,MAHMS\Week 9,DevOps;Testing
+Issue,Set up the Azure DevOps board and import the work items,,Doing,MAHMS\Week 9,DevOps;Planning
+Issue,Fix the bugs found by testing,,Doing,MAHMS\Week 9,Testing
+Issue,Gather and document organisation feedback,,To Do,MAHMS\Week 10,Planning;Documentation
+Issue,Add a real google-services.json with the debug and release SHA-1,Needed or Google sign-in fails with error 10 or 12500.,To Do,MAHMS\Week 10,Mobile;Auth
+Issue,Publish the Firestore security rules in the Firebase console,,To Do,MAHMS\Week 10,Security;DevOps
+Issue,Record the demo video with voice-over on a physical phone,Follow docs/demo-script.md.,To Do,MAHMS\Week 11,Documentation
+Issue,Take the screenshots the report needs,"Register, login, Firebase console, Firestore, payments, SOS, Actions run, Azure board.",To Do,MAHMS\Week 11,Documentation
+Issue,Update the report with the real links and screenshots,"GitHub link, Azure link, device model, video link.",To Do,MAHMS\Week 11,Documentation
+Issue,Tag the release v1.0-task2,,To Do,MAHMS\Week 11,DevOps
+Issue,Prepare and deliver the presentation,,To Do,MAHMS\Week 11,Planning
