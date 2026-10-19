@@ -124,7 +124,7 @@ system. Status chips are colour-coded
   accounts map to seeded records through `Demo` in `domain/model/Role.kt`.
 - **Registration** creates Patient accounts only. Staff accounts are issued by the administrator.
   Firestore rules make the role immutable, but creating a profile with a chosen role through the REST API is
-  still possible; closing that needs custom claims or a Cloud Function (see CLAUDE_CODE_HANDOFF.md).
+  still possible; closing that needs custom claims or a Cloud Function.
 - **Ids:** patients, doctors and payments use time-based ids; appointments, prescriptions and
   emergencies still use device-local auto-increment ids, so two phones could collide on those.
   The API avoids this: it generates UUIDs and stores the app's local id as `client_ref`.
