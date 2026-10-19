@@ -4,7 +4,7 @@ The combined report was updated to match the code as it now stands. The edited c
 saved alongside the original as a **new file**, so nothing was overwritten:
 
 - Original: `MAHMS_Combined_Report_Task2_updated.docx` (untouched)
-- Updated: `MAHMS_Combined_Report_Task2_updated_v2.docx`
+- Updated: `MAHMS_Combined_Report_Task2_FINAL.docx`
 
 Structure, styles and all 37 embedded images are unchanged. Only the wording listed below
 was replaced.
@@ -47,21 +47,28 @@ the team's own accounts, hardware or recordings.
       31 August 2026 and Week 11 ends Friday 13 November 2026, which is what
       `docs/azure-work-items.csv` uses.
 
-## Still open: Part G source listings
+## Part G source listings: regenerated
 
-Part G embeds the source of each file, and it was last regenerated before the API work. It
-does **not** yet include:
+Part G was rebuilt from the current repository.
 
-- `app/src/main/java/com/doodoobops/mahms/data/api/MahmsApi.kt`
-- the `backend/` folder (the API itself, the schema, the seed and the tests)
-- the `web/` folder
+- All 76 existing listings were re-read from disk, so the files changed for the API work
+  (`Entities.kt`, `MahmsDatabase.kt`, `Repositories.kt`, `AppContainer.kt`,
+  `PatientPaymentsScreen.kt`, `Billing.kt`, `SettingsScreen.kt`, `BillingTest.kt` and the
+  workflow) now show their current version.
+- Four sections were added after section 18, before the References:
 
-It also still shows the older versions of the five files that changed for the API work:
-`Entities.kt`, `MahmsDatabase.kt`, `Repositories.kt`, `AppContainer.kt`,
-`PatientPaymentsScreen.kt`, `Billing.kt` and `SettingsScreen.kt`.
+| Section | Contents |
+|---|---|
+| 19. REST API | The schema, the seed, `package.json`, the server and app, the database, auth and refs helpers, all six route files, the tests and `openapi.yaml` |
+| 20. Android Client for the REST API | `MahmsApi.kt` |
+| 21. Website | The five pages, the stylesheet, `config.js` and `app.js` |
+| 22. Azure DevOps Pipeline | `azure-pipelines.yml` |
 
-Regenerating Part G from the current repository is the last documentation job before
-submission.
+The Part G introduction now says twenty-two groups rather than eighteen, and lists the new
+ones.
+
+Each listing was checked line by line against the file on disk after the document was
+written, and the embedded images, tables and styles are unchanged.
 
 ## A note on what the report claims
 
