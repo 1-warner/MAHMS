@@ -15,3 +15,15 @@ build/
 !debug.keystore
 .kotlin/
 .claude/
+
+# The rubric forbids zip archives in the repository.
+*.zip
+
+# Firebase config and keys. See FIREBASE_SETUP.md.
+/app/google-services.json
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# Node (the API and any web tooling)
+node_modules/
+.env

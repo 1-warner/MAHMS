@@ -1,7 +1,12 @@
 # MAHMS — Mobile Appointment & Healthcare Management System
 
-A native Android app for **Mpilo Central Hospital**, Bulawayo, Zimbabwe. Built in Kotlin
-with Jetpack Compose (Material 3), Room (local cache), and Firebase (online authentication + Cloud Firestore).
+MAHMS for **Mpilo Central Hospital**, Bulawayo, Zimbabwe. Three parts in one repository:
+
+| Folder | What it is |
+|---|---|
+| `app/` | Native Android app. Kotlin, Jetpack Compose (Material 3), Room, Firebase. |
+| `backend/` | The team's REST API. Node.js and Express over PostgreSQL. [Read more](backend/README.md) |
+| `web/` | The website. HTML, CSS and JavaScript, no build step. [Read more](web/README.md) |
 
 > *"Mpilo" means life.*
 
@@ -14,6 +19,8 @@ with Jetpack Compose (Material 3), Room (local cache), and Firebase (online auth
 | Local database | Room (WAL + FK enforcement), seeded on first launch |
 | Authentication | Firebase Authentication: email/password + Google single sign-on |
 | Online database | Cloud Firestore (profiles/roles, patients, appointments, prescriptions, emergencies, staff) |
+| Team REST API | Node.js 20 + Express over PostgreSQL, in `backend/`. Verifies the Firebase ID token on every request. |
+| External API | OpenStreetMap Nominatim, for the SOS street address |
 | Navigation | Jetpack Navigation Compose |
 | Background work | WorkManager (medication reminders) |
 | DI | Manual container (`AppContainer`) provided via a `CompositionLocal` |
@@ -29,8 +36,37 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat :app:assembleDebug
 ```
 
+On Linux or macOS:
+
+```bash
+export JAVA_HOME=/path/to/android-studio/jbr
+./gradlew testDebugUnitTest assembleDebug
+```
+
 `local.properties` points `sdk.dir` at the local Android SDK. The first build downloads
-Gradle 8.13 and dependencies (and SDK platform 35 if missing).
+Gradle 8.13 and the dependencies, and needs **SDK platform 35** and **build-tools 35**
+installed (Android Studio > SDK Manager, or `sdkmanager "platforms;android-35" "build-tools;35.0.0"`).
+
+### Pointing the app at the REST API
+
+The app works without the API, from Room and Firebase alone. To switch the API on, give it a
+base URL. Either add a line to `local.properties` (which is git-ignored):
+
+```properties
+mahms.api.baseUrl=https://mahms-api.onrender.com
+```
+
+or pass it on the command line, or set the `MAHMS_API_BASE_URL` environment variable:
+
+```bash
+./gradlew assembleDebug -Pmahms.api.baseUrl=http://10.0.2.2:3000
+```
+
+`10.0.2.2` is how the Android emulator reaches `localhost` on the host machine. A physical
+phone needs the machine's LAN address, or the deployed URL.
+
+Left unset, `BuildConfig.MAHMS_API_BASE_URL` is empty, `MahmsApi.isConfigured` is false and
+every API call is skipped. Settings then shows "Server status: not configured for this build".
 
 ## Demo accounts
 
@@ -53,6 +89,9 @@ directly with a demo account (registration only gates the first-run routing, not
 
 ```
 com.doodoobops.mahms/
+├── data/api/                         NominatimApi (external) + MahmsApi (the team's API)
+├── data/cloud/                       Firebase auth repository + two-way CloudSync
+├── data/location/LocationProvider     device GPS for the SOS button
 ├── data/{entity,db,repository,seed}   Room layer + DatabaseSeeder
 ├── di/AppContainer                    manual DI container
 ├── domain/model/Role                  roles + demo record bindings
@@ -61,14 +100,21 @@ com.doodoobops.mahms/
 ├── ui/theme/                          Color · Type · Shape · Theme · StatusColors
 ├── ui/components/Components           shared composables (cards, buttons, chips, fields…)
 ├── ui/{auth,patient,doctor,nurse,admin,pharmacist,responder}
-└── utils/{DateUtils,ValidationUtils,SessionManager,PdfExporter}
+└── utils/{AppLog,Billing,DateUtils,GeoUtils,ValidationUtils,SessionManager,PdfExporter}
+```
+
+```
+backend/   src/{app,server,db,auth,refs}.js · src/routes/ · db/*.sql · test/ · openapi.yaml
+web/       index · services · contact · login · appointments · css/ · js/
+docs/      azure-devops-setup.md · azure-work-items.csv · demo-script.md
 ```
 
 ## Design tokens
 
 Ported verbatim from `design-system/colors_and_type.css`:
-Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, warm-grey neutrals,
-12dp default radius, blue-grey shadows. Status chips are colour-coded
+Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, blue-grey neutrals,
+12dp default radius. The website in `web/` uses the same tokens, so the two look like one
+system. Status chips are colour-coded
 (Pending=Warning, Confirmed=Primary, Completed/Resolved=Success, Cancelled=Neutral, Active=Danger).
 
 ## Known simplifications (local MVP)
@@ -81,11 +127,15 @@ Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, warm-grey ne
   still possible; closing that needs custom claims or a Cloud Function (see CLAUDE_CODE_HANDOFF.md).
 - **Ids:** patients, doctors and payments use time-based ids; appointments, prescriptions and
   emergencies still use device-local auto-increment ids, so two phones could collide on those.
+  The API avoids this: it generates UUIDs and stores the app's local id as `client_ref`.
 - **Passwords** are held by Firebase Authentication (hashed server-side). The phone keeps an unsalted SHA-256 hash only for the offline-login fallback.
 - **Sync** is two-way: Sync now (and each login) pulls Firestore documents into Room with non-destructive upserts, then pushes local changes. Last write wins; there is no conflict resolution.
 - **Bottom-nav hosts** keep tab state in a `Scaffold` rather than nested navigation graphs.
 - **Orientation** is portrait-locked app-wide (the Admin-dashboard landscape exception is not wired up).
-- **Payments** use a simulated gateway (no money moves). **SOS** uses real device GPS plus OpenStreetMap Nominatim reverse geocoding.
+- **Payments** use a simulated gateway (no money moves). The record, the receipt and the
+  revenue figures are real; when the API is reachable the receipt number is issued by a
+  database sequence on the server, otherwise it is derived from the local payment id.
+  **SOS** uses real device GPS plus OpenStreetMap Nominatim reverse geocoding.
 - All copy is English; isiNdebele + Shona are noted as pre-launch work.
 
 ## Features added for Task 2
@@ -97,16 +147,65 @@ Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, warm-grey ne
 - **SOS with GPS**: device location plus a street address from the free OpenStreetMap Nominatim API; responders open it in a maps app.
 - **Logging**: `AppLog` writes to Logcat (tag `MAHMS`) at sign-in, registration, sync, booking, prescriptions, SOS, payments and reminders.
 - **Database**: nine Room tables, each seeded with at least ten records on first launch.
+- **A REST API the team wrote**: `backend/`, Node.js and Express over PostgreSQL, twelve
+  tables, Firebase ID token verification, role checks and per-patient scoping. 40 route tests.
+- **The app talking to that API**: `data/api/MahmsApi.kt`. Booking an appointment, raising an
+  SOS and recording a payment are sent to the server as well as saved locally, and Settings
+  shows a live "Server status" line driven by `GET /health`.
+- **Website**: `web/`, public pages plus patient sign-in and an appointment list read from
+  the API.
 
 ## Testing and CI
 
-Unit tests (JUnit 4, 51 tests) live in `app/src/test`; they cover validation, dates, hashing, billing, GPS helpers and the Firestore mappers:
+**Android: 54 unit tests** (JUnit 4) in `app/src/test`, covering validation, dates, hashing,
+billing and receipt numbering, GPS helpers and the Firestore mappers:
 
-```
+```bash
 ./gradlew testDebugUnitTest
 ```
 
-The GitHub Actions workflow `.github/workflows/android.yml` runs the tests and builds the debug APK on every push and pull request. If no `app/google-services.json` is committed the workflow uses a placeholder so the build still compiles.
+**API: 40 route tests** (node:test and supertest) in `backend/test`, covering health,
+authentication, role checks, per-patient scoping, booking, retry behaviour, payments, receipt
+numbering and the SOS flow. They run against a real PostgreSQL database, so point
+`DATABASE_URL` at a throw-away one: the suite reloads the schema and drops every table first.
+
+```bash
+cd backend
+DATABASE_URL=postgres://mahms:mahms@localhost:5432/mahms npm test
+```
+
+94 automated tests in total.
+
+The GitHub Actions workflow `.github/workflows/android.yml` runs both jobs on every push and
+pull request: the Android tests and debug APK, and the API tests against a PostgreSQL service
+container. If no `app/google-services.json` is committed the workflow uses a placeholder so
+the build still compiles. `azure-pipelines.yml` mirrors the same two jobs for Azure DevOps;
+see [docs/azure-devops-setup.md](docs/azure-devops-setup.md).
+
+## Commit convention
+
+Small commits, present tense, describing the change. When the work matches an Azure DevOps
+work item, reference it at the end so the board links the commit:
+
+```
+Add payments tab and numbered receipt #42
+```
+
+For the GitHub repository with an Azure Boards connection, write `AB#42` instead of `#42`,
+because a bare `#42` means a GitHub issue. Branches: `main` is demo-ready, `dev` integrates,
+feature work goes on `feature/<short-name>`.
+
+## Documentation
+
+| File | What it covers |
+|---|---|
+| [backend/README.md](backend/README.md) | API endpoints, running it, deploying it, the tests |
+| [backend/openapi.yaml](backend/openapi.yaml) | Full API description, 13 paths |
+| [web/README.md](web/README.md) | The website, its config and how to serve it |
+| [FIREBASE_SETUP.md](FIREBASE_SETUP.md) | Firebase project, SHA-1, Firestore rules |
+| [USER_GUIDE.md](USER_GUIDE.md) | How to use the app, per role |
+| [docs/azure-devops-setup.md](docs/azure-devops-setup.md) | Board, work items, pipeline |
+| [docs/demo-script.md](docs/demo-script.md) | Timed script for the demo video |
 
 ## Team
 
