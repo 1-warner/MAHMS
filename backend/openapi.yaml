@@ -1,0 +1,632 @@
+openapi: 3.0.3
+
+info:
+  title: MAHMS API
+  version: 1.0.0
+  description: >
+    REST API for MAHMS, the Mobile Appointment and Healthcare Management System of Mpilo
+    Central Hospital. Built by team doodoobops for XISD6329 Task 2.
+
+    Authentication: Firebase Authentication is the identity provider. The Android app and the
+    website sign the user in, then send the Firebase ID token on every call as
+    "Authorization: Bearer <idToken>". The API verifies the token and maps the e-mail onto a
+    row in the users table, which holds the hospital role. The API never receives a password.
+
+    Ids: server ids are UUIDs. The Android app also sends its own Room row id as clientRef,
+    which the API stores and echoes back, so the app can match a server row to its local
+    record. Any endpoint that takes an id in the path or the query accepts either the UUID or
+    the clientRef.
+
+    Scoping: a Patient can only ever read and write their own records, whatever ids they put
+    in the request. Staff roles see any patient.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://REPLACE-WITH-DEPLOYED-URL
+    description: Deployed API (fill in once the service is hosted)
+
+tags:
+  - name: Service
+  - name: Account
+  - name: Reference data
+  - name: Appointments
+  - name: Prescriptions
+  - name: Payments
+  - name: Emergencies
+
+security:
+  - firebaseIdToken: []
+
+paths:
+  /health:
+    get:
+      tags: [Service]
+      summary: Service and database health
+      description: >
+        Open endpoint, no token needed. The app's Settings screen uses it to show
+        "Server status: connected".
+      security: []
+      responses:
+        '200':
+          description: The API and its database are reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: mahms-api }
+                  version: { type: string, example: 1.0.0 }
+                  database: { type: string, example: connected }
+                  time: { type: string, format: date-time }
+        '503':
+          description: The database cannot be reached
+
+  /api/me:
+    get:
+      tags: [Account]
+      summary: The signed-in account, its role and its linked hospital record
+      description: Called straight after sign-in so the client knows which role home screen to
+        open and which patient or doctor record belongs to the account.
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId: { type: string, format: uuid }
+                  email: { type: string, format: email }
+                  fullName: { type: string }
+                  phone: { type: string }
+                  role:
+                    type: string
+                    enum: [Patient, Doctor, Nurse, Pharmacist, Admin, Responder]
+                  patient:
+                    description: The patient record for this account, or null
+                    nullable: true
+                    allOf: [{ $ref: '#/components/schemas/Patient' }]
+                  doctor:
+                    description: The doctor record for this account, or null
+                    nullable: true
+                    allOf: [{ $ref: '#/components/schemas/Doctor' }]
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/patients/me:
+    post:
+      tags: [Account]
+      summary: Create or update the patient record of the signed-in account
+      description: A new patient account calls this once so it has a record to book against.
+        The server chooses which row to write, so one patient can never overwrite another's.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                dateOfBirth: { type: string, example: '1987-03-12' }
+                gender: { type: string }
+                phone: { type: string }
+                address: { type: string }
+                emergencyContact: { type: string }
+                clientRef: { type: string, description: The app's local patients row id }
+      responses:
+        '200':
+          description: The existing record was updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Patient' }
+        '201':
+          description: A new record was created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Patient' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { description: Only a patient account has a patient record }
+
+  /api/doctors:
+    get:
+      tags: [Reference data]
+      summary: List the hospital doctors
+      parameters:
+        - name: department
+          in: query
+          schema: { type: string }
+          example: Cardiology
+      responses:
+        '200':
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Doctor' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/departments:
+    get:
+      tags: [Reference data]
+      summary: List the hospital departments
+      responses:
+        '200':
+          description: Departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    department_id: { type: string, format: uuid }
+                    name: { type: string }
+                    description: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/appointments:
+    get:
+      tags: [Appointments]
+      summary: List appointments
+      description: A Patient always gets only their own, whatever patientId is passed.
+      parameters:
+        - name: patientId
+          in: query
+          description: UUID or clientRef. Ignored for a Patient account.
+          schema: { type: string }
+        - name: doctorId
+          in: query
+          schema: { type: string }
+        - name: date
+          in: query
+          schema: { type: string, example: '2026-12-01' }
+        - name: status
+          in: query
+          schema: { type: string, enum: [Pending, Confirmed, Completed, Cancelled] }
+      responses:
+        '200':
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Appointment' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+    post:
+      tags: [Appointments]
+      summary: Book an appointment
+      description: Sending the same clientRef twice updates the first row instead of creating a
+        duplicate, so the app can safely retry after a dropped connection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doctorId, appointmentDate, appointmentTime]
+              properties:
+                patientId:
+                  type: string
+                  description: Staff only. A Patient always books for themselves.
+                doctorId: { type: string }
+                appointmentDate: { type: string, example: '2026-12-01' }
+                appointmentTime: { type: string, example: '10:15' }
+                reason: { type: string }
+                status: { type: string, enum: [Pending, Confirmed, Completed, Cancelled] }
+                clientRef: { type: string }
+            example:
+              doctorId: '2'
+              appointmentDate: '2026-12-01'
+              appointmentTime: '10:15'
+              reason: Persistent cough for two weeks
+              clientRef: '41'
+      responses:
+        '201':
+          description: Booked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '409': { description: The account has no patient record yet }
+
+  /api/appointments/{id}:
+    patch:
+      tags: [Appointments]
+      summary: Change an appointment
+      description: A Patient may only cancel their own. Staff may set any status.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID or clientRef
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [Pending, Confirmed, Completed, Cancelled] }
+                appointmentDate: { type: string }
+                appointmentTime: { type: string }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: Not your appointment, or a patient tried to do more than cancel }
+        '404': { description: No such appointment }
+
+  /api/prescriptions:
+    get:
+      tags: [Prescriptions]
+      summary: List prescriptions
+      parameters:
+        - name: patientId
+          in: query
+          description: UUID or clientRef. Ignored for a Patient account.
+          schema: { type: string }
+        - name: dispensed
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Prescriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+    post:
+      tags: [Prescriptions]
+      summary: Write a prescription (Doctor only)
+      description: The prescribing doctor is taken from the signed-in account, never from the
+        request body, so a prescription cannot be filed under someone else's name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patientId, medicationName]
+              properties:
+                patientId: { type: string }
+                medicationName: { type: string }
+                dosage: { type: string }
+                frequency: { type: string }
+                duration: { type: string }
+                appointmentId: { type: string }
+                issueDate: { type: string, example: '2026-10-19' }
+                dispensed: { type: boolean }
+                clientRef: { type: string }
+      responses:
+        '201':
+          description: Issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: Only a Doctor may write a prescription }
+
+  /api/prescriptions/{id}:
+    patch:
+      tags: [Prescriptions]
+      summary: Mark a prescription dispensed (Pharmacist, Doctor or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispensed]
+              properties:
+                dispensed: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '403': { description: Role not allowed }
+        '404': { description: No such prescription }
+
+  /api/payments:
+    get:
+      tags: [Payments]
+      summary: List payments
+      parameters:
+        - name: patientId
+          in: query
+          description: UUID or clientRef. Ignored for a Patient account.
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [Pending, Completed, Failed] }
+      responses:
+        '200':
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Payment' }
+    post:
+      tags: [Payments]
+      summary: Record a payment
+      description: >
+        The card or mobile-money gateway is still simulated, so no money moves, but the record
+        and the receipt are real. A Completed payment is given a receipt in the same database
+        transaction, and the receipt number comes from a database sequence, so two phones
+        paying at the same moment cannot be issued the same number.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [appointmentId, amount, paymentMethod]
+              properties:
+                appointmentId: { type: string }
+                amount: { type: number, format: double, minimum: 0 }
+                paymentMethod: { type: string, enum: [EcoCash, Card, Cash] }
+                status: { type: string, enum: [Pending, Completed, Failed] }
+                paymentDate: { type: string, example: '2026-10-19' }
+                clientRef: { type: string }
+            example:
+              appointmentId: '1'
+              amount: 20
+              paymentMethod: EcoCash
+              clientRef: '7'
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: Not your appointment }
+
+  /api/receipts/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: The receipt for one payment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          description: UUID or clientRef
+          schema: { type: string }
+      responses:
+        '200':
+          description: The receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receiptNo: { type: string, example: RCP-2026-00005 }
+                  issuedAt: { type: string, format: date-time }
+                  paymentId: { type: string, format: uuid }
+                  appointmentId: { type: string, format: uuid }
+                  patientName: { type: string }
+                  amount: { type: number, format: double }
+                  paymentMethod: { type: string }
+                  paymentDate: { type: string }
+                  status: { type: string }
+                  hospital: { type: string, example: Mpilo Central Hospital }
+        '403': { description: Not your receipt }
+        '404': { description: No such payment, or the payment is not Completed yet }
+
+  /api/emergencies:
+    get:
+      tags: [Emergencies]
+      summary: List SOS alerts
+      description: The responder dashboard calls this with status=active.
+      parameters:
+        - name: status
+          in: query
+          description: Case-insensitive, so status=active works.
+          schema: { type: string, enum: [Active, In Progress, Resolved] }
+        - name: patientId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Emergency' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    post:
+      tags: [Emergencies]
+      summary: Raise an SOS alert
+      description: >
+        A Patient raises the alert for themselves. The alert is accepted even with no GPS
+        position, because losing the alert would be worse than losing the position.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patientId: { type: string, description: Staff only }
+                location: { type: string, example: '14 Fife St, Bulawayo (-20.15280, 28.58190)' }
+                latitude: { type: number, format: double, minimum: -90, maximum: 90 }
+                longitude: { type: number, format: double, minimum: -180, maximum: 180 }
+                description: { type: string }
+                clientRef: { type: string }
+      responses:
+        '201':
+          description: Raised
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Emergency' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: The account has no patient record yet }
+
+  /api/emergencies/{id}:
+    patch:
+      tags: [Emergencies]
+      summary: Change the status of an alert (Responder, Nurse, Doctor or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [Active, In Progress, Resolved] }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Emergency' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: Role not allowed }
+        '404': { description: No such emergency }
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The Firebase ID token, from
+        FirebaseAuth.getInstance().currentUser.getIdToken(false) on Android.
+
+  responses:
+    Unauthorised:
+      description: The token is missing, invalid or expired
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: A field is missing or has a value the server will not accept
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        hint: { type: string }
+
+    Patient:
+      type: object
+      properties:
+        patient_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        first_name: { type: string }
+        last_name: { type: string }
+        date_of_birth: { type: string }
+        gender: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        address: { type: string }
+        emergency_contact: { type: string }
+
+    Doctor:
+      type: object
+      properties:
+        doctor_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        first_name: { type: string }
+        last_name: { type: string }
+        full_name: { type: string }
+        specialization: { type: string }
+        department: { type: string }
+        phone: { type: string }
+        email: { type: string }
+
+    Appointment:
+      type: object
+      properties:
+        appointment_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        patient_id: { type: string, format: uuid }
+        patient_ref: { type: string, nullable: true }
+        doctor_id: { type: string, format: uuid }
+        doctor_ref: { type: string, nullable: true }
+        doctor_name: { type: string }
+        specialization: { type: string }
+        department: { type: string }
+        appointment_date: { type: string, example: '2026-12-01' }
+        appointment_time: { type: string, example: '10:15' }
+        status: { type: string, enum: [Pending, Confirmed, Completed, Cancelled] }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Prescription:
+      type: object
+      properties:
+        prescription_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        appointment_id: { type: string, format: uuid, nullable: true }
+        patient_id: { type: string, format: uuid }
+        patient_ref: { type: string, nullable: true }
+        doctor_id: { type: string, format: uuid }
+        doctor_ref: { type: string, nullable: true }
+        doctor_name: { type: string }
+        medication_name: { type: string }
+        dosage: { type: string }
+        frequency: { type: string }
+        duration: { type: string }
+        issue_date: { type: string }
+        dispensed: { type: boolean }
+
+    Payment:
+      type: object
+      properties:
+        payment_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        appointment_id: { type: string, format: uuid }
+        appointment_ref: { type: string, nullable: true }
+        patient_id: { type: string, format: uuid }
+        patient_ref: { type: string, nullable: true }
+        patient_name: { type: string }
+        amount: { type: number, format: double }
+        payment_method: { type: string, enum: [EcoCash, Card, Cash] }
+        payment_date: { type: string }
+        status: { type: string, enum: [Pending, Completed, Failed] }
+        receipt_no: { type: string, nullable: true, example: RCP-2026-00005 }
+        issued_at: { type: string, format: date-time, nullable: true }
+
+    Emergency:
+      type: object
+      properties:
+        emergency_id: { type: string, format: uuid }
+        client_ref: { type: string, nullable: true }
+        patient_id: { type: string, format: uuid }
+        patient_ref: { type: string, nullable: true }
+        patient_name: { type: string }
+        patient_phone: { type: string }
+        location: { type: string }
+        latitude: { type: number, format: double, nullable: true }
+        longitude: { type: number, format: double, nullable: true }
+        status: { type: string, enum: [Active, In Progress, Resolved] }
+        description: { type: string }
+        raised_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time, nullable: true }
