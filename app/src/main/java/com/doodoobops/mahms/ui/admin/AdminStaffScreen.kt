@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.StaffEntity
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.components.DataText
 import com.doodoobops.mahms.ui.components.InitialsAvatar
 import com.doodoobops.mahms.ui.components.MahmsCard
@@ -108,6 +109,7 @@ fun AdminStaffScreen(modifier: Modifier = Modifier) {
             confirmButton = {
                 MahmsPrimaryButton("Add staff", enabled = canAdd, onClick = {
                     scope.launch {
+                        AppLog.i("Admin", "Adding a staff member with role $role")
                         container.staff.insert(StaffEntity(firstName = first.trim(), lastName = last.trim(), role = role, department = dept.trim(), phone = phone.trim(), email = email.trim()))
                         showAdd = false
                     }

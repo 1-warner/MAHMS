@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.components.DataText
 import com.doodoobops.mahms.ui.components.MahmsCard
 import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
@@ -136,6 +137,7 @@ fun AdminReportsScreen(modifier: Modifier = Modifier) {
                     }
                     MahmsSecondaryButton("Export as PDF", onClick = {
                         scope.launch {
+                            AppLog.i("Admin", "Exporting the report as a PDF")
                             val dest = PdfExporter.export(
                                 context,
                                 fileName = "MAHMS_${type.name}_${from}_$to",

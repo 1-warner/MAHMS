@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.doodoobops.mahms.R
+import com.doodoobops.mahms.utils.SessionManager
 
 class NotificationHelper(private val context: Context) {
 
@@ -26,6 +27,9 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showReminder(id: Int, medicationName: String, dosage: String) {
+        val enabled = context.getSharedPreferences(SessionManager.PREFS, Context.MODE_PRIVATE)
+            .getBoolean(SessionManager.KEY_NOTIFICATIONS, true)
+        if (!enabled) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -35,24 +39,6 @@ class NotificationHelper(private val context: Context) {
             .setSmallIcon(R.drawable.ic_stat_mpilo)
             .setContentTitle("Mpilo Central · Reminder")
             .setContentText("Time to take your $medicationName — $dosage.")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-
-        NotificationManagerCompat.from(context).notify(id, notification)
-    }
-
-    /** Appointment reminder, sharing the medication reminder channel. */
-    fun showAppointmentReminder(id: Int, doctorName: String, whenText: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) return
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_mpilo)
-            .setContentTitle("Mpilo Central · Appointment")
-            .setContentText("You see $doctorName on $whenText.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

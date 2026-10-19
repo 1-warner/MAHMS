@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -25,10 +26,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.doodoobops.mahms.R
+import com.doodoobops.mahms.data.cloud.AuthOutcome
 import com.doodoobops.mahms.ui.LocalAppContainer
 import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
 import com.doodoobops.mahms.ui.components.MahmsTextField
@@ -42,6 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
@@ -50,7 +54,6 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
     var submitted by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var showReset by remember { mutableStateOf(false) }
 
     val emailErr = ValidationUtils.emailError(email)
     val passEmpty = if (password.isBlank()) "Password is required" else null
@@ -98,22 +101,50 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     loading = true
                     error = null
                     scope.launch {
-                        val user = container.users.login(email, password)
-                        loading = false
-                        if (user != null) {
-                            container.session.startSession(
-                                user.userId, user.role, user.fullName,
-                                user.linkedPatientId, user.linkedDoctorId,
-                            )
-                            onLoggedIn()
-                        } else {
-                            error = "Incorrect email or password"
+                        when (val outcome = container.authRepo.login(email, password)) {
+                            is AuthOutcome.Success -> {
+                                container.startLinkedSession(outcome.user)
+                                loading = false
+                                onLoggedIn()
+                            }
+                            is AuthOutcome.Failure -> {
+                                loading = false
+                                error = outcome.message
+                            }
                         }
                     }
                 },
             )
 
-            TextButton(onClick = { showReset = true }) {
+            // Single sign-on with a Google account (Firebase Authentication)
+            OutlinedButton(
+                onClick = {
+                    loading = true
+                    error = null
+                    scope.launch {
+                        val webClientId = context.getString(R.string.default_web_client_id)
+                        when (val outcome = container.authRepo.signInWithGoogle(context, webClientId)) {
+                            is AuthOutcome.Success -> {
+                                container.startLinkedSession(outcome.user)
+                                loading = false
+                                onLoggedIn()
+                            }
+                            is AuthOutcome.Failure -> {
+                                loading = false
+                                error = outcome.message
+                            }
+                        }
+                    }
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Continue with Google")
+            }
+
+            TextButton(onClick = {
+                scope.launch { snackbar.showSnackbar("Contact your administrator") }
+            }) {
                 Text("Forgot password?", color = MpiloBlue600)
             }
             Spacer(Modifier.height(Spacing.x4))
@@ -123,15 +154,5 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 color = Neutral500,
             )
         }
-    }
-
-    if (showReset) {
-        ForgotPasswordDialog(
-            onDismiss = { showReset = false },
-            onDone = { msg ->
-                showReset = false
-                scope.launch { snackbar.showSnackbar(msg) }
-            },
-        )
     }
 }

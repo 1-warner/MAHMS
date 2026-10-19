@@ -15,6 +15,9 @@ sealed class Screen(val route: String) {
     data object PharmacistHome : Screen("pharmacist_home")
     data object ResponderHome : Screen("responder_home")
 
+    data object Settings : Screen("settings")
+    data object Help : Screen("help")
+
     data object BookAppointment : Screen("book_appointment")
 
     companion object {

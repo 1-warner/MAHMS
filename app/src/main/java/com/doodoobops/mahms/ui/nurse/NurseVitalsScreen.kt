@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
 import com.doodoobops.mahms.ui.components.MahmsPrimaryButton
@@ -104,6 +105,7 @@ fun NurseVitalsScreen(modifier: Modifier = Modifier) {
                             "BP $systolic/$diastolic mmHg, HR ${hr.ifBlank { "—" }} bpm, " +
                             "Temp ${temp.ifBlank { "—" }}°C, Wt ${weight.ifBlank { "—" }}kg, Ht ${height.ifBlank { "—" }}cm"
                         val merged = if (p.notes.isBlank()) line else "$line\n${p.notes}"
+                        AppLog.i("Nurse", "Vitals saved for patient ${p.patientId}")
                         container.patients.update(p.copy(notes = merged))
                         systolic = ""; diastolic = ""; hr = ""; temp = ""; weight = ""; height = ""
                         snackbar.showSnackbar("Vitals saved")

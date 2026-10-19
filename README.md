@@ -1,7 +1,7 @@
 # MAHMS — Mobile Appointment & Healthcare Management System
 
 A native Android app for **Mpilo Central Hospital**, Bulawayo, Zimbabwe. Built in Kotlin
-with Jetpack Compose (Material 3), Room, and a local-only (mock) data layer.
+with Jetpack Compose (Material 3), Room (local cache), and Firebase (online authentication + Cloud Firestore).
 
 > *"Mpilo" means life.*
 
@@ -11,7 +11,9 @@ with Jetpack Compose (Material 3), Room, and a local-only (mock) data layer.
 |---|---|
 | Language / UI | Kotlin · Jetpack Compose (Material 3) |
 | Min / Target SDK | 26 / 35 |
-| Database | Room (WAL + FK enforcement), seeded on first launch |
+| Local database | Room (WAL + FK enforcement), seeded on first launch |
+| Authentication | Firebase Authentication: email/password + Google single sign-on |
+| Online database | Cloud Firestore (profiles/roles, patients, appointments, prescriptions, emergencies, staff) |
 | Navigation | Jetpack Navigation Compose |
 | Background work | WorkManager (medication reminders) |
 | DI | Manual container (`AppContainer`) provided via a `CompositionLocal` |
@@ -53,8 +55,8 @@ directly with a demo account (registration only gates the first-run routing, not
 com.doodoobops.mahms/
 ├── data/{entity,db,repository,seed}   Room layer + DatabaseSeeder
 ├── di/AppContainer                    manual DI container
-├── domain/model/Role                  the six MAHMS roles
-├── notifications/                     NotificationHelper + Medication/Appointment workers
+├── domain/model/Role                  roles + demo record bindings
+├── notifications/                     NotificationHelper + MedicationReminderWorker
 ├── navigation/{Screen,NavGraph}       routes + NavHost
 ├── ui/theme/                          Color · Type · Shape · Theme · StatusColors
 ├── ui/components/Components           shared composables (cards, buttons, chips, fields…)
@@ -69,25 +71,49 @@ Mpilo Blue `#1A66BE`, Care Teal `#199F8E`, Emergency Red `#C1272D`, warm-grey ne
 12dp default radius, blue-grey shadows. Status chips are colour-coded
 (Pending=Warning, Confirmed=Primary, Completed/Resolved=Success, Cancelled=Neutral, Active=Danger).
 
-## Feature notes
-
-- **Accounts are linked to clinical records.** Registering as a Patient or Doctor creates the
-  matching `PatientEntity`/`DoctorEntity`, and the session carries those ids, so each account
-  sees its own appointments, prescriptions and alerts.
-- **Payments.** Patients settle the consultation fee (EcoCash / Cash / Medical Aid / Bank Card)
-  from the appointment card; admin revenue and reports read the same records.
-- **Password reset.** Self-service from the login screen (email + registered phone), plus an
-  administrator reset in **Admin → Accounts**.
-- **Reminders.** Booking an appointment schedules a reminder 24 hours ahead; medication
-  reminders are daily, and the reminder sheet's take/missed actions drive the adherence ring.
-- **SOS.** Requires a deliberate ~2s press-and-hold; releasing early cancels.
-
 ## Known simplifications (local MVP)
 
-- **Passwords** use SHA-256 (no salt) — adequate for a local demo only.
+- **Auth ↔ clinical records:** each login is linked to its own `PatientEntity` / `DoctorEntity`
+  by e-mail (`AppContainer.startLinkedSession`); a record is created on first login. The demo
+  accounts map to seeded records through `Demo` in `domain/model/Role.kt`.
+- **Registration** creates Patient accounts only. Staff accounts are issued by the administrator.
+  Firestore rules make the role immutable, but creating a profile with a chosen role through the REST API is
+  still possible; closing that needs custom claims or a Cloud Function (see CLAUDE_CODE_HANDOFF.md).
+- **Ids:** patients, doctors and payments use time-based ids; appointments, prescriptions and
+  emergencies still use device-local auto-increment ids, so two phones could collide on those.
+- **Passwords** are held by Firebase Authentication (hashed server-side). The phone keeps an unsalted SHA-256 hash only for the offline-login fallback.
+- **Sync** is two-way: Sync now (and each login) pulls Firestore documents into Room with non-destructive upserts, then pushes local changes. Last write wins; there is no conflict resolution.
 - **Bottom-nav hosts** keep tab state in a `Scaffold` rather than nested navigation graphs.
-- **Charts** are drawn with Canvas rather than Vico/MPAndroidChart, to keep the dependency
-  graph (and the build's memory footprint) small.
-- **GPS** is mocked; the SOS location is a placeholder string.
-- **No automated tests** yet.
+- **Orientation** is portrait-locked app-wide (the Admin-dashboard landscape exception is not wired up).
+- **Payments** use a simulated gateway (no money moves). **SOS** uses real device GPS plus OpenStreetMap Nominatim reverse geocoding.
 - All copy is English; isiNdebele + Shona are noted as pre-launch work.
+
+## Features added for Task 2
+
+- **Settings** (Profile tab, every role): account details, medication-reminder notification switch, Sync now, change password, About, log out.
+- **Help system**: in-app *Help and user guide* plus [USER_GUIDE.md](USER_GUIDE.md).
+- **Online services**: Firebase Authentication (email/password and Google sign-in) and Cloud Firestore; see [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
+- **Payments and receipts**: Appointments > Payments tab, pay with EcoCash/Card/Cash (simulated), receipt with Save as PDF.
+- **SOS with GPS**: device location plus a street address from the free OpenStreetMap Nominatim API; responders open it in a maps app.
+- **Logging**: `AppLog` writes to Logcat (tag `MAHMS`) at sign-in, registration, sync, booking, prescriptions, SOS, payments and reminders.
+- **Database**: nine Room tables, each seeded with at least ten records on first launch.
+
+## Testing and CI
+
+Unit tests (JUnit 4, 51 tests) live in `app/src/test`; they cover validation, dates, hashing, billing, GPS helpers and the Firestore mappers:
+
+```
+./gradlew testDebugUnitTest
+```
+
+The GitHub Actions workflow `.github/workflows/android.yml` runs the tests and builds the debug APK on every push and pull request. If no `app/google-services.json` is committed the workflow uses a placeholder so the build still compiles.
+
+## Team
+
+doodoobops: Lunga (ST10445079, Android), Lunathi Danster (ST10448224, web front end), Bohlokwa Letsoso (ST10096006, backend / DevOps). Module XISD6329, Rosebank International.
+
+## Firebase setup
+
+The app needs a Firebase project before it will build. Follow [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+(create project, add the Android app and SHA-1, enable Email/Password + Google, download
+`google-services.json` into `app/`, create Firestore and publish `firestore.rules`).

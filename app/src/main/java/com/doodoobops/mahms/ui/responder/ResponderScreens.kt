@@ -1,5 +1,7 @@
 package com.doodoobops.mahms.ui.responder
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.EmergencyEntity
 import com.doodoobops.mahms.ui.LocalAppContainer
@@ -34,12 +37,15 @@ import com.doodoobops.mahms.ui.components.MahmsTopBar
 import com.doodoobops.mahms.ui.theme.Neutral500
 import com.doodoobops.mahms.ui.theme.Neutral900
 import com.doodoobops.mahms.ui.theme.Spacing
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.utils.DateUtils
+import com.doodoobops.mahms.utils.GeoUtils
 import kotlinx.coroutines.launch
 
 @Composable
 fun ResponderActiveScreen(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val active by container.emergencies.active().collectAsStateWithLifecycle(emptyList())
     val patients by rememberPatientMap()
@@ -65,13 +71,29 @@ fun ResponderActiveScreen(modifier: Modifier = Modifier) {
                         Spacer(Modifier.height(Spacing.x1))
                         Text(e.description, style = MaterialTheme.typography.bodyMedium, color = Neutral900)
                         Spacer(Modifier.height(Spacing.x3))
+                        // GPS point stored with the alert -> open it in any installed maps app
+                        val point = GeoUtils.parseCoordinates(e.location)
+                        if (point != null) {
+                            MahmsSecondaryButton("Open location in maps", onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GeoUtils.mapsUri(point.first, point.second, "SOS")))
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(intent)
+                                } catch (ex: Exception) {
+                                    AppLog.w("Responder", "No maps app could open the location", ex)
+                                }
+                            })
+                            Spacer(Modifier.height(Spacing.x2))
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.x3)) {
                             if (e.status == "Active") {
                                 MahmsSecondaryButton("Respond", modifier = Modifier.weight(1f), onClick = {
+                                    AppLog.i("Responder", "Responding to emergency ${e.emergencyId}")
                                     scope.launch { container.emergencies.update(e.copy(status = "In Progress")) }
                                 })
                             }
                             MahmsDangerButton("Resolve", modifier = Modifier.weight(1f), onClick = {
+                                AppLog.i("Responder", "Resolved emergency ${e.emergencyId}")
                                 scope.launch { container.emergencies.update(e.copy(status = "Resolved", resolvedAt = System.currentTimeMillis())) }
                             })
                         }
