@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact | MAHMS</title>
+  <meta name="description" content="Phone numbers, email and address for Mpilo Central Hospital.">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">
+      <strong>MAHMS</strong>
+      <span>Mpilo Central Hospital</span>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html" aria-current="page">Contact</a>
+      <a href="login.html">Patient login</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <h2>Contact us</h2>
+
+    <section class="section">
+      <div class="card notice notice-error" style="margin-bottom:24px">
+        <strong>In an emergency, do not use this page.</strong> Call
+        <span class="mono">+263 29 221 7111</span> or use the SOS button in the MAHMS mobile
+        app, which alerts the casualty desk and sends your location.
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Hospital switchboard</h3>
+          <p class="mono">+263 29 221 7111</p>
+          <p class="muted">Open 24 hours.</p>
+        </div>
+        <div class="card">
+          <h3>Appointments desk</h3>
+          <p class="mono">+263 29 221 7120</p>
+          <p class="muted">Monday to Friday, 08:00 to 16:30.</p>
+        </div>
+        <div class="card">
+          <h3>Email</h3>
+          <p class="mono">appointments@mpilo.co.zw</p>
+          <p class="muted">We aim to reply within two working days.</p>
+        </div>
+        <div class="card">
+          <h3>Address</h3>
+          <p>Mpilo Central Hospital<br>Vera Road, Mzilikazi<br>Bulawayo, Zimbabwe</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Send us a message</h2>
+      <div class="card">
+        <p class="muted">This form is part of the Task 2 prototype and is not yet connected to
+          a mailbox. Please use the phone number or email address above.</p>
+        <form class="form" onsubmit="event.preventDefault(); document.getElementById('contact-notice').className='notice notice-info'; document.getElementById('contact-notice').textContent='This form is not connected yet. Please phone or email us instead.';">
+          <div id="contact-notice" class="notice hidden"></div>
+          <div class="field">
+            <label for="c-name">Your name</label>
+            <input id="c-name" name="name" type="text" required>
+          </div>
+          <div class="field">
+            <label for="c-email">Email address</label>
+            <input id="c-email" name="email" type="email" required>
+          </div>
+          <div class="field">
+            <label for="c-message">Message</label>
+            <input id="c-message" name="message" type="text" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Send message</button>
+        </form>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>Mpilo Central Hospital, Vera Road, Mzilikazi, Bulawayo, Zimbabwe</p>
+    <p class="muted">MAHMS is a student project built by team doodoobops for XISD6329 at
+      Rosebank International. It is not a live hospital service.</p>
+  </div>
+</footer>
+
+</body>
+</html>
