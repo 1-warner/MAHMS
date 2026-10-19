@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.doodoobops.mahms.data.entity.AppointmentEntity
 import com.doodoobops.mahms.data.entity.DoctorEntity
@@ -27,7 +28,7 @@ import com.doodoobops.mahms.data.entity.UserEntity
         MedicationReminderEntity::class,
         StaffEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class MahmsDatabase : RoomDatabase() {
@@ -44,6 +45,17 @@ abstract class MahmsDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var instance: MahmsDatabase? = null
+
+        /**
+         * Version 2 adds payments.receiptNo, the receipt number issued by the MAHMS API.
+         * A real migration rather than a destructive one, so a phone that already has
+         * payments in it keeps them when the app is updated.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE payments ADD COLUMN receiptNo TEXT")
+            }
+        }
 
         fun get(context: Context): MahmsDatabase =
             instance ?: synchronized(this) {
@@ -63,6 +75,7 @@ abstract class MahmsDatabase : RoomDatabase() {
                         db.execSQL("PRAGMA foreign_keys=ON;")
                     }
                 })
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration()
                 .build()
     }

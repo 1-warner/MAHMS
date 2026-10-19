@@ -31,4 +31,14 @@ object Billing {
         val serial = (paymentId % 100_000L).toString().padStart(5, '0')
         return "RCP-$year-$serial"
     }
+
+    /**
+     * The receipt number to show the patient.
+     *
+     * Prefers [serverReceiptNo], the number the MAHMS API issued from a database sequence,
+     * which is unique across every phone. Falls back to [receiptNumber] when the payment was
+     * made offline or the API could not be reached, so a receipt is always available.
+     */
+    fun displayReceiptNumber(serverReceiptNo: String?, paymentId: Long, paymentDate: String): String =
+        serverReceiptNo?.takeIf { it.isNotBlank() } ?: receiptNumber(paymentId, paymentDate)
 }

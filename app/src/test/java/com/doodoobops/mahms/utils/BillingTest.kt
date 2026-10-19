@@ -34,4 +34,28 @@ class BillingTest {
     @Test fun paymentMethods_includeEcoCash() {
         assertTrue("EcoCash" in Billing.PAYMENT_METHODS)
     }
+
+    @Test
+    fun `display receipt number prefers the number the API issued`() {
+        assertEquals(
+            "RCP-2026-00042",
+            Billing.displayReceiptNumber("RCP-2026-00042", 7L, "2026-03-01"),
+        )
+    }
+
+    @Test
+    fun `display receipt number falls back to the local one when the API gave none`() {
+        assertEquals(
+            Billing.receiptNumber(7L, "2026-03-01"),
+            Billing.displayReceiptNumber(null, 7L, "2026-03-01"),
+        )
+    }
+
+    @Test
+    fun `display receipt number treats a blank server number as missing`() {
+        assertEquals(
+            Billing.receiptNumber(7L, "2026-03-01"),
+            Billing.displayReceiptNumber("   ", 7L, "2026-03-01"),
+        )
+    }
 }
