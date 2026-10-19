@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My appointments | MAHMS</title>
+  <meta name="description" content="Your MAHMS appointments at Mpilo Central Hospital.">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">
+      <strong>MAHMS</strong>
+      <span>Mpilo Central Hospital</span>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html">Contact</a>
+      <a href="#" id="signout">Sign out</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <h2>My appointments</h2>
+    <p class="muted" id="greeting">Loading your account...</p>
+
+    <div id="notice" class="notice hidden" style="margin-top:16px"></div>
+
+    <section class="section" style="margin-top:24px">
+      <div class="card">
+        <div id="appointments-loading" class="muted">Loading your appointments...</div>
+        <div id="appointments-empty" class="muted hidden">
+          You have no appointments yet. Book one in the MAHMS mobile app.
+        </div>
+        <div class="table-wrap hidden" id="appointments-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Doctor</th>
+                <th>Department</th>
+                <th>Reason</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="appointments-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Recent payments</h2>
+      <div class="card">
+        <div id="payments-loading" class="muted">Loading your payments...</div>
+        <div id="payments-empty" class="muted hidden">No payments recorded yet.</div>
+        <div class="table-wrap hidden" id="payments-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Receipt</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="payments-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>Mpilo Central Hospital, Vera Road, Mzilikazi, Bulawayo, Zimbabwe</p>
+    <p class="muted" id="server-status">Checking the hospital server...</p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script type="module">
+  import {
+    requireUser, signOutUser, api, serverIsUp,
+    escapeHtml, statusClass, prettyDate, setNotice,
+  } from './js/app.js';
+
+  const notice = document.getElementById('notice');
+
+  document.getElementById('signout').addEventListener('click', async (event) => {
+    event.preventDefault();
+    await signOutUser();
+    window.location.replace('login.html');
+  });
+
+  serverIsUp().then((up) => {
+    document.getElementById('server-status').textContent = up
+      ? 'Hospital server: connected.'
+      : 'Hospital server: not reachable right now.';
+  });
+
+  function show(id, visible) {
+    document.getElementById(id).classList.toggle('hidden', !visible);
+  }
+
+  async function loadAccount() {
+    const me = await api('/api/me');
+    const name = (me.patient && me.patient.first_name) || me.fullName || me.email;
+    document.getElementById('greeting').textContent = `Signed in as ${name} (${me.role}).`;
+    return me;
+  }
+
+  async function loadAppointments() {
+    const rows = await api('/api/appointments');
+    show('appointments-loading', false);
+
+    if (!rows.length) {
+      show('appointments-empty', true);
+      return;
+    }
+    document.getElementById('appointments-body').innerHTML = rows.map((a) => `
+      <tr>
+        <td>${escapeHtml(prettyDate(a.appointment_date))}</td>
+        <td class="mono">${escapeHtml(a.appointment_time)}</td>
+        <td>Dr ${escapeHtml(a.doctor_name)}</td>
+        <td>${escapeHtml(a.department)}</td>
+        <td>${escapeHtml(a.reason) || '<span class="muted">&mdash;</span>'}</td>
+        <td><span class="${statusClass(a.status)}">${escapeHtml(a.status)}</span></td>
+      </tr>`).join('');
+    show('appointments-wrap', true);
+  }
+
+  async function loadPayments() {
+    const rows = await api('/api/payments');
+    show('payments-loading', false);
+
+    if (!rows.length) {
+      show('payments-empty', true);
+      return;
+    }
+    document.getElementById('payments-body').innerHTML = rows.map((p) => `
+      <tr>
+        <td>${escapeHtml(prettyDate(p.payment_date))}</td>
+        <td class="mono">$${Number(p.amount).toFixed(2)}</td>
+        <td>${escapeHtml(p.payment_method)}</td>
+        <td class="mono">${escapeHtml(p.receipt_no) || '<span class="muted">&mdash;</span>'}</td>
+        <td><span class="${statusClass(p.status)}">${escapeHtml(p.status)}</span></td>
+      </tr>`).join('');
+    show('payments-wrap', true);
+  }
+
+  requireUser(async () => {
+    try {
+      await loadAccount();
+      // Both lists are independent, so one failing should not hide the other.
+      await Promise.all([
+        loadAppointments().catch((error) => {
+          show('appointments-loading', false);
+          setNotice(notice, `Could not load your appointments. ${error.message}`, 'error');
+        }),
+        loadPayments().catch(() => {
+          show('payments-loading', false);
+          show('payments-empty', true);
+        }),
+      ]);
+    } catch (error) {
+      document.getElementById('greeting').textContent = '';
+      show('appointments-loading', false);
+      show('payments-loading', false);
+      setNotice(notice, error.message, 'error');
+    }
+  });
+</script>
+
+</body>
+</html>
