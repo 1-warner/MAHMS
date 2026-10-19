@@ -36,8 +36,8 @@ import com.doodoobops.mahms.utils.DateUtils
 fun DoctorHomeScreen(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
     val today = DateUtils.todayStore()
-    val todayAppts by container.appointments.byDoctorAndDate(container.session.doctorId, today).collectAsStateWithLifecycle(emptyList())
-    val rxToday by container.prescriptions.countForDoctorOnDate(container.session.doctorId, today).collectAsStateWithLifecycle(0)
+    val todayAppts by container.appointments.byDoctorAndDate(container.session.currentDoctorId, today).collectAsStateWithLifecycle(emptyList())
+    val rxToday by container.prescriptions.countForDoctorOnDate(container.session.currentDoctorId, today).collectAsStateWithLifecycle(0)
     val patients by rememberPatientMap()
 
     Column(modifier.fillMaxSize()) {

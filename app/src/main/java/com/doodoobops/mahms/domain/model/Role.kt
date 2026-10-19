@@ -15,3 +15,12 @@ enum class Role(val label: String) {
     }
 }
 
+/**
+ * Links a signed-in account to its own clinical record. Accounts are matched to a patient or
+ * doctor by e-mail; new patients get a record created at first sign-in. The two seeded demo
+ * logins use different e-mail addresses from their records, so they are mapped here.
+ */
+object Demo {
+    val PATIENT_BY_EMAIL: Map<String, Long> = mapOf("patient@mpilo.co.zw" to 1L)
+    val DOCTOR_BY_EMAIL: Map<String, Long> = mapOf("doctor@mpilo.co.zw" to 1L)
+}

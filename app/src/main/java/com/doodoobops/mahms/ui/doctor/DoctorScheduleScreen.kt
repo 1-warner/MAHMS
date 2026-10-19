@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
 import com.doodoobops.mahms.ui.components.DataText
@@ -51,7 +52,7 @@ fun DoctorScheduleScreen(modifier: Modifier = Modifier) {
 
     val week = remember { currentWeek() }
     var selected by remember { mutableStateOf(DateUtils.todayStore().takeIf { it in week } ?: week.first()) }
-    val appts by container.appointments.byDoctorAndDate(container.session.doctorId, selected).collectAsStateWithLifecycle(emptyList())
+    val appts by container.appointments.byDoctorAndDate(container.session.currentDoctorId, selected).collectAsStateWithLifecycle(emptyList())
     val dow = remember { SimpleDateFormat("EEE", Locale.US) }
 
     Column(modifier.fillMaxSize()) {
@@ -88,7 +89,10 @@ fun DoctorScheduleScreen(modifier: Modifier = Modifier) {
                         if (a.status != "Completed" && a.status != "Cancelled") {
                             Spacer(Modifier.height(Spacing.x3))
                             MahmsSecondaryButton("Mark attended", onClick = {
-                                scope.launch { container.appointments.update(a.copy(status = "Completed")) }
+                                scope.launch {
+                                    AppLog.i("Doctor", "Appointment ${a.appointmentId} marked attended")
+                                    container.appointments.update(a.copy(status = "Completed"))
+                                }
                             })
                         }
                     }

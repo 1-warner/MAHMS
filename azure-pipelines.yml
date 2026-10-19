@@ -1,0 +1,110 @@
+# Azure Pipelines for MAHMS.
+#
+# This mirrors .github/workflows/android.yml so the same checks run whether the team pushes to
+# GitHub or to Azure Repos. Two jobs run side by side: the Android app, and the REST API with
+# a PostgreSQL container.
+#
+# To create the pipeline: Azure DevOps > Pipelines > New pipeline > choose the repository >
+# Existing Azure Pipelines YAML file > /azure-pipelines.yml.
+# Steps to set the project up by hand are in docs/azure-devops-setup.md.
+
+trigger:
+  branches:
+    include:
+      - main
+      - master
+      - dev
+
+pr:
+  branches:
+    include:
+      - main
+      - master
+      - dev
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  # ------------------------------------------------------------------ Android
+  - job: android
+    displayName: Android app, unit tests and debug APK
+    steps:
+      - task: JavaToolInstaller@0
+        displayName: Set up JDK 17
+        inputs:
+          versionSpec: '17'
+          jdkArchitectureOption: x64
+          jdkSourceOption: PreInstalled
+
+      # The real google-services.json holds the team's Firebase settings and may not be
+      # committed. The build only needs a valid file to compile; unit tests never reach
+      # Firebase.
+      - script: |
+          if [ ! -f app/google-services.json ]; then
+            cp .github/ci/google-services.placeholder.json app/google-services.json
+            echo "Using the placeholder Firebase config."
+          fi
+        displayName: Use a placeholder Firebase config when none is committed
+
+      - script: chmod +x ./gradlew
+        displayName: Make the Gradle wrapper executable
+
+      - script: ./gradlew testDebugUnitTest --stacktrace
+        displayName: Run the unit tests
+
+      - task: PublishTestResults@2
+        displayName: Publish the test results
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: '**/build/test-results/testDebugUnitTest/TEST-*.xml'
+          testRunTitle: MAHMS Android unit tests
+          failTaskOnFailedTests: true
+
+      - script: ./gradlew assembleDebug --stacktrace
+        displayName: Build the debug APK
+
+      - publish: app/build/outputs/apk/debug/app-debug.apk
+        displayName: Publish the debug APK
+        artifact: mahms-debug-apk
+
+      - publish: app/build/reports/tests/testDebugUnitTest
+        displayName: Publish the HTML test report
+        condition: succeededOrFailed()
+        artifact: mahms-unit-test-report
+
+  # ------------------------------------------------------------------ REST API
+  - job: api
+    displayName: REST API tests
+    services:
+      postgres: postgres
+    variables:
+      # The tests reload the schema and the seed, which drops every table first, so this
+      # points at the throw-away container database and never at the deployed one.
+      DATABASE_URL: postgres://mahms:mahms@localhost:5432/mahms
+    steps:
+      - task: NodeTool@0
+        displayName: Set up Node.js 20
+        inputs:
+          versionSpec: '20.x'
+
+      - script: npm ci || npm install
+        displayName: Install the API dependencies
+        workingDirectory: backend
+
+      - script: npm test
+        displayName: Run the API tests
+        workingDirectory: backend
+
+resources:
+  containers:
+    - container: postgres
+      image: postgres:16-alpine
+      ports:
+        - 5432:5432
+      env:
+        POSTGRES_USER: mahms
+        POSTGRES_PASSWORD: mahms
+        POSTGRES_DB: mahms
+      options: --health-cmd="pg_isready -U mahms" --health-interval=10s --health-timeout=5s --health-retries=10

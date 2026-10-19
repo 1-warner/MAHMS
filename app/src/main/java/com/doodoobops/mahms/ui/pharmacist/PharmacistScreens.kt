@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.PrescriptionEntity
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
 import com.doodoobops.mahms.ui.components.DataText
@@ -68,6 +69,7 @@ fun PharmacistPendingScreen(modifier: Modifier = Modifier) {
                         ) {
                             MahmsPrimaryButton("Dispense", onClick = {
                                 scope.launch {
+                                    AppLog.i("Pharmacy", "Dispensing prescription ${rx.prescriptionId}")
                                     container.prescriptions.update(rx.copy(dispensed = true))
                                     snackbar.showSnackbar("${rx.medicationName} dispensed")
                                 }

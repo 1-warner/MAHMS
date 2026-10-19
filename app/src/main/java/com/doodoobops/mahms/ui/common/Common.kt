@@ -14,10 +14,13 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.doodoobops.mahms.data.entity.PatientEntity
+import com.doodoobops.mahms.navigation.Screen
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.ui.LocalNavController
 import com.doodoobops.mahms.ui.components.InitialsAvatar
 import com.doodoobops.mahms.ui.components.MahmsCard
 import com.doodoobops.mahms.ui.components.MahmsDangerButton
+import com.doodoobops.mahms.ui.components.MahmsSecondaryButton
 import com.doodoobops.mahms.ui.components.MahmsTopBar
 import com.doodoobops.mahms.ui.components.LabeledValue
 import com.doodoobops.mahms.ui.theme.Neutral500
@@ -57,6 +60,9 @@ fun RoleProfileScreen(modifier: Modifier = Modifier, onLogout: () -> Unit) {
             MahmsCard {
                 LabeledValue("Role", session.currentRole ?: "—")
             }
+            val nav = LocalNavController.current
+            MahmsSecondaryButton("Settings", onClick = { nav?.navigate(Screen.Settings.route) })
+            MahmsSecondaryButton("Help and user guide", onClick = { nav?.navigate(Screen.Help.route) })
             MahmsDangerButton("Log out", onClick = onLogout)
         }
     }

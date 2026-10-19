@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -18,6 +19,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // Base URL of the team's own REST API (the backend/ folder in this repository).
+        // Override it without touching this file by putting a line in local.properties:
+        //     mahms.api.baseUrl=https://mahms-api.onrender.com
+        // Left blank, the app simply skips the API calls and works from Room and Firebase
+        // alone, which is what happens on a machine that has not set it.
+        val apiBaseUrl: String =
+            (project.findProperty("mahms.api.baseUrl") as String?)
+                ?: System.getenv("MAHMS_API_BASE_URL")
+                ?: ""
+        buildConfigField("String", "MAHMS_API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
@@ -38,11 +50,16 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    testOptions {
+        // Lets plain JVM unit tests touch android.util.Log etc. without "not mocked" crashes.
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -63,6 +80,8 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     debugImplementation(libs.androidx.ui.tooling)
 
+    testImplementation(libs.junit)
+
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.androidx.room.runtime)
@@ -71,4 +90,15 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
+
+    // Firebase: Authentication (email/password + Google SSO) and Firestore (online database)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // Google sign-in via Credential Manager
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.google.id)
 }

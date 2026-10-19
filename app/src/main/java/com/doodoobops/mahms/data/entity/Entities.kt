@@ -6,10 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** App login account. Role drives post-login routing. */
-@Entity(
-    tableName = "users",
-    indices = [Index(value = ["email"], unique = true)],
-)
+@Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey(autoGenerate = true) val userId: Long = 0,
     val fullName: String,
@@ -18,10 +15,6 @@ data class UserEntity(
     val passwordHash: String,
     val role: String,
     val createdAt: Long = System.currentTimeMillis(),
-    /** Clinical record this account owns, when the role is Patient. */
-    val linkedPatientId: Long? = null,
-    /** Clinical record this account owns, when the role is Doctor. */
-    val linkedDoctorId: Long? = null,
 )
 
 @Entity(tableName = "patients")
@@ -125,6 +118,13 @@ data class PaymentEntity(
     val paymentDate: String,
     /** Pending / Completed / Failed */
     val status: String,
+    /**
+     * Receipt number issued by the MAHMS API, e.g. "RCP-2026-00005". Null when the payment was
+     * made offline or the API could not be reached, in which case the screens fall back to
+     * [com.doodoobops.mahms.utils.Billing.receiptNumber], which derives a number from the
+     * local payment id.
+     */
+    val receiptNo: String? = null,
 )
 
 @Entity(
@@ -144,9 +144,6 @@ data class MedicationReminderEntity(
     /** "HH:mm" 24-hour. */
     val reminderTime: String,
     val isActive: Boolean = true,
-    /** Adherence tracking: doses marked taken / missed from the reminder sheet. */
-    val takenCount: Int = 0,
-    val missedCount: Int = 0,
 )
 
 @Entity(tableName = "staff")
