@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.doodoobops.mahms.data.entity.AppointmentEntity
 import com.doodoobops.mahms.data.entity.DoctorEntity
 import com.doodoobops.mahms.data.entity.EmergencyEntity
@@ -31,18 +32,8 @@ interface UserDao {
     @Query("SELECT COUNT(*) FROM users")
     suspend fun count(): Int
 
-    @Update
-    suspend fun update(user: UserEntity)
-
-    @Query("SELECT * FROM users ORDER BY fullName")
-    fun getAll(): Flow<List<UserEntity>>
-
-    /** Identity check for self-service password reset: email + registered phone. */
-    @Query("SELECT * FROM users WHERE email = :email AND phone = :phone LIMIT 1")
-    suspend fun findByEmailAndPhone(email: String, phone: String): UserEntity?
-
-    @Query("UPDATE users SET passwordHash = :hash WHERE userId = :userId")
-    suspend fun updatePassword(userId: Long, hash: String)
+    @Query("UPDATE users SET passwordHash = :hash WHERE userId = :id")
+    suspend fun updatePassword(id: Long, hash: String)
 }
 
 @Dao
@@ -70,6 +61,13 @@ interface PatientDao {
 
     @Query("SELECT COUNT(*) FROM patients")
     fun count(): Flow<Int>
+
+    @Query("SELECT * FROM patients WHERE lower(email) = lower(:email) LIMIT 1")
+    suspend fun getByEmail(email: String): PatientEntity?
+
+    /** Insert-or-update WITHOUT delete, so child rows are never removed by a cascade. */
+    @Upsert
+    suspend fun upsert(patient: PatientEntity)
 }
 
 @Dao
@@ -88,6 +86,12 @@ interface DoctorDao {
 
     @Query("SELECT * FROM doctors WHERE doctorId = :id LIMIT 1")
     suspend fun getById(id: Long): DoctorEntity?
+
+    @Query("SELECT * FROM doctors WHERE lower(email) = lower(:email) LIMIT 1")
+    suspend fun getByEmail(email: String): DoctorEntity?
+
+    @Upsert
+    suspend fun upsert(doctor: DoctorEntity)
 }
 
 @Dao
@@ -124,6 +128,9 @@ interface AppointmentDao {
 
     @Query("SELECT * FROM appointments WHERE appointmentId = :id LIMIT 1")
     suspend fun getById(id: Long): AppointmentEntity?
+
+    @Upsert
+    suspend fun upsert(appointment: AppointmentEntity)
 }
 
 data class DayCount(val date: String, val total: Int)
@@ -153,6 +160,9 @@ interface PrescriptionDao {
 
     @Query("SELECT COUNT(*) FROM prescriptions WHERE doctorId = :doctorId AND issueDate = :date")
     fun countForDoctorOnDate(doctorId: Long, date: String): Flow<Int>
+
+    @Upsert
+    suspend fun upsert(prescription: PrescriptionEntity)
 }
 
 @Dao
@@ -174,6 +184,9 @@ interface EmergencyDao {
 
     @Query("SELECT COUNT(*) FROM emergencies WHERE status IN ('Active','In Progress')")
     fun countActive(): Flow<Int>
+
+    @Upsert
+    suspend fun upsert(emergency: EmergencyEntity)
 }
 
 @Dao
@@ -187,15 +200,12 @@ interface PaymentDao {
     @Query("SELECT IFNULL(SUM(amount),0) FROM payments WHERE status = 'Completed' AND paymentDate = :date")
     fun revenueForDate(date: String): Flow<Double>
 
-    @Query("SELECT * FROM payments WHERE appointmentId = :appointmentId LIMIT 1")
-    suspend fun getByAppointment(appointmentId: Long): PaymentEntity?
-
-    /** Payments for every appointment belonging to one patient. */
-    @Query("SELECT p.* FROM payments p INNER JOIN appointments a ON a.appointmentId = p.appointmentId WHERE a.patientId = :patientId")
+    /** All payments for one patient (payments link to appointments, appointments to patients). */
+    @Query("SELECT p.* FROM payments p INNER JOIN appointments a ON a.appointmentId = p.appointmentId WHERE a.patientId = :patientId ORDER BY p.paymentId DESC")
     fun getByPatient(patientId: Long): Flow<List<PaymentEntity>>
 
-    @Update
-    suspend fun update(payment: PaymentEntity)
+    @Upsert
+    suspend fun upsert(payment: PaymentEntity)
 }
 
 @Dao
@@ -217,6 +227,9 @@ interface MedicationReminderDao {
 
     @Query("SELECT * FROM medication_reminders WHERE isActive = 1")
     suspend fun getAllActive(): List<MedicationReminderEntity>
+
+    @Upsert
+    suspend fun upsert(reminder: MedicationReminderEntity)
 }
 
 @Dao
@@ -229,4 +242,7 @@ interface StaffDao {
 
     @Query("SELECT * FROM staff ORDER BY lastName")
     fun getAll(): Flow<List<StaffEntity>>
+
+    @Upsert
+    suspend fun upsert(staff: StaffEntity)
 }

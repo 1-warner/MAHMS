@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.data.entity.PrescriptionEntity
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.common.patientName
 import com.doodoobops.mahms.ui.common.rememberPatientMap
 import com.doodoobops.mahms.ui.components.DataText
@@ -146,9 +147,10 @@ fun CreatePrescriptionScreen(modifier: Modifier = Modifier) {
 
                 MahmsPrimaryButton("Issue prescription", enabled = canIssue, onClick = {
                     scope.launch {
+                        AppLog.i("Prescription", "Doctor ${container.session.currentDoctorId} is issuing a prescription")
                         container.prescriptions.insert(
                             PrescriptionEntity(
-                                appointmentId = apptId!!, patientId = patientId!!, doctorId = container.session.doctorId,
+                                appointmentId = apptId!!, patientId = patientId!!, doctorId = container.session.currentDoctorId,
                                 medicationName = medName.trim(), dosage = dosage.trim(),
                                 frequency = frequency, duration = duration.trim(),
                                 issueDate = DateUtils.todayStore(),

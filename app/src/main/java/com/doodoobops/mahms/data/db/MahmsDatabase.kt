@@ -27,7 +27,7 @@ import com.doodoobops.mahms.data.entity.UserEntity
         MedicationReminderEntity::class,
         StaffEntity::class,
     ],
-    version = 2,
+    version = 1,
     exportSchema = false,
 )
 abstract class MahmsDatabase : RoomDatabase() {

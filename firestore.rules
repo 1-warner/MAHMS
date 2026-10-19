@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// MAHMS Firestore security rules.
+// Paste into: Firebase console > Firestore Database > Rules > Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function validRole(r) {
+      return r in ['Patient', 'Doctor', 'Nurse', 'Hospital Administrator', 'Pharmacist', 'Emergency Responder'];
+    }
+    function isStaff() {
+      return hasProfile() && profile().role in ['Doctor', 'Nurse', 'Hospital Administrator', 'Pharmacist', 'Emergency Responder'];
+    }
+
+    // A user reads and creates only their own profile, with a valid role.
+    // The role can never be changed afterwards, so a patient cannot promote themselves.
+    // Profiles cannot be deleted from the app.
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && validRole(request.resource.data.role);
+      allow update: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // Records a patient creates through the app (own bookings, SOS alerts, payments, reminders).
+    match /{collection}/{docId} {
+      allow read: if hasProfile()
+                  && collection in ['patients', 'doctors', 'appointments', 'prescriptions',
+                                    'emergencies', 'payments', 'medication_reminders', 'staff'];
+      allow create, update: if hasProfile()
+                  && collection in ['patients', 'appointments', 'prescriptions', 'emergencies',
+                                    'payments', 'medication_reminders'];
+      // Hospital directory data: staff roles only.
+      allow create, update: if isStaff() && collection in ['doctors', 'staff'];
+      // Only staff can delete clinical records.
+      allow delete: if isStaff() && collection in ['patients', 'doctors', 'appointments', 'prescriptions',
+                                    'emergencies', 'payments', 'medication_reminders', 'staff'];
+    }
+  }
+}

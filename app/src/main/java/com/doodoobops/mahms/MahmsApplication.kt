@@ -3,6 +3,7 @@ package com.doodoobops.mahms
 import android.app.Application
 import com.doodoobops.mahms.data.seed.DatabaseSeeder
 import com.doodoobops.mahms.di.AppContainer
+import com.doodoobops.mahms.utils.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,10 +18,12 @@ class MahmsApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.i("App", "MAHMS starting")
         container = AppContainer(this)
         container.notifications.createChannel()
         appScope.launch {
             DatabaseSeeder.seedIfEmpty(container.database)
+            AppLog.i("App", "Local database ready")
         }
     }
 }

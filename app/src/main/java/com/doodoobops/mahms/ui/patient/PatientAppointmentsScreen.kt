@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.doodoobops.mahms.ui.LocalAppContainer
+import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.components.MahmsEmptyState
 import com.doodoobops.mahms.ui.components.MahmsTopBar
 import com.doodoobops.mahms.ui.theme.MpiloBlue500
@@ -43,12 +44,9 @@ import kotlinx.coroutines.launch
 fun PatientAppointmentsScreen(modifier: Modifier = Modifier, onBook: () -> Unit) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
-    val appts by container.appointments.byPatient(container.session.patientId).collectAsStateWithLifecycle(emptyList())
+    val appts by container.appointments.byPatient(container.session.currentPatientId).collectAsStateWithLifecycle(emptyList())
     val doctors by rememberDoctorMap()
-    val payments by container.payments.byPatient(container.session.patientId).collectAsStateWithLifecycle(emptyList())
-    val paidAppointments = payments.filter { it.status == "Completed" }.map { it.appointmentId }.toSet()
     var tab by remember { mutableStateOf(0) }
-    var payingFor by remember { mutableStateOf<com.doodoobops.mahms.data.entity.AppointmentEntity?>(null) }
 
     val upcoming = appts.filter { it.status in listOf("Pending", "Confirmed") && DateUtils.isFutureDate(it.appointmentDate) }
     val past = appts.filterNot { it in upcoming }
@@ -60,8 +58,11 @@ fun PatientAppointmentsScreen(modifier: Modifier = Modifier, onBook: () -> Unit)
             Row(Modifier.fillMaxWidth().padding(Spacing.x4), horizontalArrangement = Arrangement.spacedBy(Spacing.x2)) {
                 SegTab("Upcoming", tab == 0, Modifier.weight(1f)) { tab = 0 }
                 SegTab("Past", tab == 1, Modifier.weight(1f)) { tab = 1 }
+                SegTab("Payments", tab == 2, Modifier.weight(1f)) { tab = 2 }
             }
-            if (shown.isEmpty()) {
+            if (tab == 2) {
+                PatientPaymentsContent(appts, doctors)
+            } else if (shown.isEmpty()) {
                 MahmsEmptyState(
                     Icons.Filled.CalendarMonth,
                     if (tab == 0) "No upcoming appointments" else "No past appointments",
@@ -76,10 +77,13 @@ fun PatientAppointmentsScreen(modifier: Modifier = Modifier, onBook: () -> Unit)
                         PatientAppointmentCard(
                             a, doctors[a.doctorId],
                             onCancel = if (tab == 0) {
-                                { scope.launch { container.appointments.update(a.copy(status = "Cancelled")) } }
+                                {
+                                    scope.launch {
+                                        AppLog.i("Booking", "Appointment ${a.appointmentId} cancelled by the patient")
+                                        container.appointments.update(a.copy(status = "Cancelled"))
+                                    }
+                                }
                             } else null,
-                            paid = a.appointmentId in paidAppointments,
-                            onPay = { payingFor = a },
                         )
                     }
                     item { Spacer(Modifier.height(72.dp)) }
@@ -93,14 +97,6 @@ fun PatientAppointmentsScreen(modifier: Modifier = Modifier, onBook: () -> Unit)
             modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.x4),
             icon = { Icon(Icons.Filled.Add, null) },
             text = { Text("Book new") },
-        )
-    }
-
-    payingFor?.let { appt ->
-        PaymentDialog(
-            appointment = appt,
-            onDismiss = { payingFor = null },
-            onPaid = { payingFor = null },
         )
     }
 }
