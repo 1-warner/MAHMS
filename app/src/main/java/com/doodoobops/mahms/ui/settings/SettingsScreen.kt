@@ -17,6 +17,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,12 @@ fun SettingsScreen(onBack: () -> Unit, onOpenHelp: () -> Unit, onLogout: () -> U
     val snackbar = remember { SnackbarHostState() }
 
     var notifications by remember { mutableStateOf(session.notificationsEnabled) }
+
+    // "Server status" below. null while the health check is still running.
+    var serverUp by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        serverUp = if (container.api.isConfigured) container.api.isServerUp() else false
+    }
 
     var current by remember { mutableStateOf("") }
     var newPass by remember { mutableStateOf("") }
@@ -105,6 +112,34 @@ fun SettingsScreen(onBack: () -> Unit, onOpenHelp: () -> Unit, onLogout: () -> U
                     scope.launch {
                         snackbar.showSnackbar(
                             if (started) "Sync started. Records are downloading and uploading." else "Sign in with an online account to sync."
+                        )
+                    }
+                })
+            }
+
+            SectionHeader("Hospital server")
+            MahmsCard {
+                Text(
+                    "Appointments, payments and emergency alerts are also sent to the hospital's own MAHMS server, which issues receipt numbers and lets the casualty desk see alerts straight away.",
+                    style = MaterialTheme.typography.bodySmall, color = Neutral500,
+                )
+                Spacer(Modifier.height(Spacing.x3))
+                LabeledValue(
+                    "Server status",
+                    when {
+                        !container.api.isConfigured -> "Not configured for this build"
+                        serverUp == null -> "Checking..."
+                        serverUp == true -> "Connected"
+                        else -> "Offline, records are kept on this phone"
+                    },
+                )
+                Spacer(Modifier.height(Spacing.x3))
+                MahmsSecondaryButton("Check again", onClick = {
+                    serverUp = null
+                    scope.launch {
+                        serverUp = if (container.api.isConfigured) container.api.isServerUp() else false
+                        snackbar.showSnackbar(
+                            if (serverUp == true) "The hospital server is reachable." else "The hospital server could not be reached."
                         )
                     }
                 })

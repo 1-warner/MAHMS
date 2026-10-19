@@ -118,6 +118,13 @@ data class PaymentEntity(
     val paymentDate: String,
     /** Pending / Completed / Failed */
     val status: String,
+    /**
+     * Receipt number issued by the MAHMS API, e.g. "RCP-2026-00005". Null when the payment was
+     * made offline or the API could not be reached, in which case the screens fall back to
+     * [com.doodoobops.mahms.utils.Billing.receiptNumber], which derives a number from the
+     * local payment id.
+     */
+    val receiptNo: String? = null,
 )
 
 @Entity(

@@ -1,5 +1,6 @@
 package com.doodoobops.mahms.data.repository
 
+import com.doodoobops.mahms.data.api.MahmsApi
 import com.doodoobops.mahms.data.cloud.CloudSync
 import com.doodoobops.mahms.data.cloud.toCloudMap
 import com.doodoobops.mahms.data.db.AppointmentDao
@@ -22,7 +23,9 @@ import com.doodoobops.mahms.data.entity.StaffEntity
 import com.doodoobops.mahms.data.entity.UserEntity
 import com.doodoobops.mahms.domain.model.Demo
 import com.doodoobops.mahms.utils.AppLog
+import com.doodoobops.mahms.utils.GeoUtils
 import com.doodoobops.mahms.utils.hashPassword
+import kotlinx.coroutines.CancellationException
 
 class UserRepository(private val dao: UserDao) {
     suspend fun register(fullName: String, email: String, phone: String, password: String, role: String): Long =
@@ -144,7 +147,11 @@ class DoctorRepository(private val dao: DoctorDao) {
     suspend fun get(id: Long) = dao.getById(id)
 }
 
-class AppointmentRepository(private val dao: AppointmentDao, private val sync: CloudSync? = null) {
+class AppointmentRepository(
+    private val dao: AppointmentDao,
+    private val sync: CloudSync? = null,
+    private val api: MahmsApi? = null,
+) {
     fun all() = dao.getAll()
     fun byPatient(id: Long) = dao.getByPatient(id)
     fun byDoctor(id: Long) = dao.getByDoctor(id)
@@ -154,14 +161,41 @@ class AppointmentRepository(private val dao: AppointmentDao, private val sync: C
     fun countForDate(date: String) = dao.countForDate(date)
     fun countPerDay() = dao.countPerDay()
     suspend fun get(id: Long) = dao.getById(id)
+    /**
+     * Saves the booking to Room first, so it is never lost, then mirrors it to Cloud Firestore
+     * and to the team's REST API. Both mirrors are best effort: offline, the row stays in Room
+     * and is picked up by the next Sync now.
+     */
     suspend fun insert(a: AppointmentEntity): Long {
         val id = dao.insert(a)
-        sync?.push("appointments", id, a.copy(appointmentId = id).toCloudMap())
+        val saved = a.copy(appointmentId = id)
+        sync?.push("appointments", id, saved.toCloudMap())
+        mirrorToApi(saved)
         return id
     }
     suspend fun update(a: AppointmentEntity) {
         dao.update(a)
         sync?.push("appointments", a.appointmentId, a.toCloudMap())
+        mirrorToApi(a)
+    }
+
+    private suspend fun mirrorToApi(a: AppointmentEntity) {
+        val client = api ?: return
+        if (!client.isConfigured) return
+        try {
+            client.bookAppointment(
+                clientRef = a.appointmentId,
+                doctorRef = a.doctorId,
+                date = a.appointmentDate,
+                time = a.appointmentTime,
+                reason = a.reason,
+                status = a.status,
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.w("Appointments", "Could not mirror appointment ${a.appointmentId} to the API", e)
+        }
     }
 }
 
@@ -183,14 +217,42 @@ class PrescriptionRepository(private val dao: PrescriptionDao, private val sync:
     }
 }
 
-class EmergencyRepository(private val dao: EmergencyDao, private val sync: CloudSync? = null) {
+class EmergencyRepository(
+    private val dao: EmergencyDao,
+    private val sync: CloudSync? = null,
+    private val api: MahmsApi? = null,
+) {
     fun byPatient(id: Long) = dao.getByPatient(id)
     fun active() = dao.getActive()
     fun resolved() = dao.getResolved()
     fun countActive() = dao.countActive()
+    /**
+     * Saves the SOS alert locally, then sends it to Firestore and to the REST API. The alert
+     * is kept even with no GPS fix and no connection, because losing it would be worse than
+     * losing the position.
+     */
     suspend fun insert(e: EmergencyEntity): Long {
         val id = dao.insert(e)
-        sync?.push("emergencies", id, e.copy(emergencyId = id).toCloudMap())
+        val saved = e.copy(emergencyId = id)
+        sync?.push("emergencies", id, saved.toCloudMap())
+
+        val client = api
+        if (client != null && client.isConfigured) {
+            try {
+                val point = GeoUtils.parseCoordinates(saved.location)
+                client.raiseEmergency(
+                    clientRef = id,
+                    location = saved.location,
+                    latitude = point?.first,
+                    longitude = point?.second,
+                    description = saved.description,
+                )
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                AppLog.w("Emergency", "Could not send alert $id to the API", ex)
+            }
+        }
         return id
     }
     suspend fun update(e: EmergencyEntity) {
@@ -199,17 +261,68 @@ class EmergencyRepository(private val dao: EmergencyDao, private val sync: Cloud
     }
 }
 
-class PaymentRepository(private val dao: PaymentDao, private val sync: CloudSync? = null) {
+class PaymentRepository(
+    private val dao: PaymentDao,
+    private val sync: CloudSync? = null,
+    private val api: MahmsApi? = null,
+) {
     fun all() = dao.getAll()
     fun byPatient(patientId: Long) = dao.getByPatient(patientId)
     fun revenueForDate(date: String) = dao.revenueForDate(date)
 
-    /** Saves (or replaces, when the id exists) a payment and copies it to the online database. */
+    /**
+     * Saves (or replaces, when the id exists) a payment and copies it to the online database.
+     *
+     * The payment is also recorded through the REST API, which issues the receipt number from
+     * a database sequence. When that succeeds the number is stored on the local row and the
+     * receipt screens show it. When it does not, receiptNo stays null and the screens fall
+     * back to [com.doodoobops.mahms.utils.Billing.receiptNumber], so an offline payment still
+     * produces a receipt.
+     */
     suspend fun insert(p: PaymentEntity): Long {
         val id = dao.insert(p)
-        sync?.push("payments", id, p.copy(paymentId = id).toCloudMap())
-        AppLog.i("Payments", "Payment $id saved for appointment ${p.appointmentId} (${p.status})")
+        var saved = p.copy(paymentId = id)
+
+        val client = api
+        if (client != null && client.isConfigured) {
+            try {
+                val serverReceipt = client.recordPayment(
+                    clientRef = id,
+                    appointmentRef = saved.appointmentId,
+                    amount = saved.amount,
+                    method = saved.paymentMethod,
+                    date = saved.paymentDate,
+                    status = saved.status,
+                )
+                if (serverReceipt != null && serverReceipt != saved.receiptNo) {
+                    saved = saved.copy(receiptNo = serverReceipt)
+                    dao.upsert(saved)
+                    AppLog.i("Payments", "Receipt $serverReceipt issued by the API for payment $id")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLog.w("Payments", "Could not record payment $id with the API", e)
+            }
+        }
+
+        sync?.push("payments", id, saved.toCloudMap())
+        AppLog.i("Payments", "Payment $id saved for appointment ${saved.appointmentId} (${saved.status})")
         return id
+    }
+
+    /** The receipt the server holds for a payment, or null when the API is not reachable. */
+    suspend fun fetchServerReceipt(paymentId: Long): String? {
+        val client = api ?: return null
+        if (!client.isConfigured) return null
+        return try {
+            client.receipt(paymentId)?.optString("receiptNo")?.ifBlank { null }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.w("Payments", "Could not fetch the receipt for payment $paymentId", e)
+            null
+        }
     }
 }
 

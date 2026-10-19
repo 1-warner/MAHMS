@@ -19,6 +19,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // Base URL of the team's own REST API (the backend/ folder in this repository).
+        // Override it without touching this file by putting a line in local.properties:
+        //     mahms.api.baseUrl=https://mahms-api.onrender.com
+        // Left blank, the app simply skips the API calls and works from Room and Firebase
+        // alone, which is what happens on a machine that has not set it.
+        val apiBaseUrl: String =
+            (project.findProperty("mahms.api.baseUrl") as String?)
+                ?: System.getenv("MAHMS_API_BASE_URL")
+                ?: ""
+        buildConfigField("String", "MAHMS_API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
@@ -39,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {

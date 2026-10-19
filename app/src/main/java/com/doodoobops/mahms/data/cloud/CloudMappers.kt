@@ -81,6 +81,7 @@ fun PaymentEntity.toCloudMap(): Map<String, Any?> = mapOf(
     "paymentMethod" to paymentMethod,
     "paymentDate" to paymentDate,
     "status" to status,
+    "receiptNo" to receiptNo,
 )
 
 fun MedicationReminderEntity.toCloudMap(): Map<String, Any?> = mapOf(
@@ -166,6 +167,7 @@ fun Map<String, Any?>.toPayment(): PaymentEntity? {
     return PaymentEntity(
         paymentId = id, appointmentId = lng("appointmentId") ?: return null, amount = dbl("amount"),
         paymentMethod = str("paymentMethod"), paymentDate = str("paymentDate"), status = str("status"),
+        receiptNo = str("receiptNo").ifBlank { null },
     )
 }
 

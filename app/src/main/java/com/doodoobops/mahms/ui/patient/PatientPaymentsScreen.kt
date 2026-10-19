@@ -103,7 +103,7 @@ fun PatientPaymentsContent(
         items(receipts, key = { "pay-${it.paymentId}" }) { p ->
             MahmsCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DataText(Billing.receiptNumber(p.paymentId, p.paymentDate), modifier = Modifier.weight(1f))
+                    DataText(p.displayReceiptNumber(), modifier = Modifier.weight(1f))
                     MahmsStatusChip("Completed")
                 }
                 Spacer(Modifier.height(Spacing.x1))
@@ -205,7 +205,7 @@ private fun ReceiptDialog(
 ) {
     val context = LocalContext.current
     var saveMessage by remember { mutableStateOf<String?>(null) }
-    val number = Billing.receiptNumber(payment.paymentId, payment.paymentDate)
+    val number = payment.displayReceiptNumber()
     val visit = appointment?.let { "${DateUtils.prettyDate(it.appointmentDate)} · ${it.appointmentTime}" } ?: "—"
 
     AlertDialog(
@@ -243,3 +243,7 @@ private fun ReceiptDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
 }
+
+/** See [Billing.displayReceiptNumber]: the API's number when there is one, else the local one. */
+private fun PaymentEntity.displayReceiptNumber(): String =
+    Billing.displayReceiptNumber(receiptNo, paymentId, paymentDate)
