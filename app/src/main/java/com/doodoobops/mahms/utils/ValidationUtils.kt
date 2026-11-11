@@ -11,8 +11,8 @@ fun hashPassword(password: String): String =
 object ValidationUtils {
 
     private val emailRegex = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
-    // +263XXXXXXXXX (9 digits after code) or 07XXXXXXXX (10 digits)
-    private val phoneRegex = Regex("^(\\+263\\d{9}|07\\d{8})$")
+    // Any international phone: optional +, then 7-15 digits (spaces/dashes/parens stripped)
+    private val phoneRegex = Regex("^\\+?\\d{7,15}$")
 
     fun emailError(value: String): String? = when {
         value.isBlank() -> "Email is required"
@@ -20,11 +20,13 @@ object ValidationUtils {
         else -> null
     }
 
-    fun phoneError(value: String): String? = when {
-        value.isBlank() -> "Phone number is required"
-        !phoneRegex.matches(value.trim().replace(" ", "")) ->
-            "Use +263XXXXXXXXX or 07XXXXXXXX"
-        else -> null
+    fun phoneError(value: String): String? {
+        val stripped = value.trim().replace(Regex("[\\s\\-().]+"), "")
+        return when {
+            stripped.isBlank() -> "Phone number is required"
+            !phoneRegex.matches(stripped) -> "Enter a valid phone number (7-15 digits)"
+            else -> null
+        }
     }
 
     fun passwordError(value: String): String? = when {

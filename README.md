@@ -138,6 +138,25 @@ system. Status chips are colour-coded
   **SOS** uses real device GPS plus OpenStreetMap Nominatim reverse geocoding.
 - All copy is English; isiNdebele + Shona are noted as pre-launch work.
 
+## Release Notes — v1.0 Final (Task 3)
+
+Changes made since the Task 2 prototype, in response to lecturer feedback and physical-device testing:
+
+- **Firebase SHA-1 registered** — added the debug SHA-1 fingerprint to the Firebase project so the app no longer returns "API key not valid" on a physical device.
+- **Google Sign-In enabled** — enabling the provider in the Firebase console causes the `google-services` Gradle plugin to generate `default_web_client_id`, which is required at build time for SSO.
+- **Firestore security rules published** — `firestore.rules` deployed to Cloud Firestore: role-based access, role immutability after creation, staff-only write access to clinical directories.
+- **Cloud Firestore database created** — Standard edition, nam5 multi-region, production mode.
+- **Phone validation relaxed** — `ValidationUtils.phoneError` now accepts any international number (optional `+`, 7–15 digits, spaces/dashes/parens stripped before matching) instead of requiring a Zimbabwean format only.
+- **End-to-end device testing** — full smoke test on Samsung Galaxy A04 (Android 14): registration, Google SSO, Firestore sync, booking, payment, SOS and medication reminders all confirmed working.
+
+### Innovative features (added in this release)
+
+- **Google Single Sign-On** via Firebase Authentication — register and log in with a Google account, no separate password needed.
+- **Two-way Firestore Sync** — non-destructive upserts in both directions; offline records upload and remote records download without data loss.
+- **Live street address in SOS** — GPS coordinates reverse-geocoded to a human-readable address via OpenStreetMap Nominatim.
+- **PDF Receipt Export** — save a payment receipt as a PDF directly from the app using Android's `PdfDocument` API, no third-party library.
+- **Role-immutable Firestore rules** — the security rules prevent a user from ever changing their own role after the profile is created.
+
 ## Features added for Task 2
 
 - **Settings** (Profile tab, every role): account details, medication-reminder notification switch, Sync now, change password, About, log out.
