@@ -43,7 +43,7 @@ import com.doodoobops.mahms.utils.ValidationUtils
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLoggedIn: () -> Unit) {
+fun LoginScreen(onLoggedIn: () -> Unit, onNeedsProfile: (uid: String, name: String, email: String) -> Unit = { _, _, _ -> }) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,6 +107,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                 loading = false
                                 onLoggedIn()
                             }
+                            is AuthOutcome.NeedsProfile -> {
+                                loading = false
+                                onNeedsProfile(outcome.uid, outcome.suggestedName, outcome.email)
+                            }
                             is AuthOutcome.Failure -> {
                                 loading = false
                                 error = outcome.message
@@ -128,6 +132,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                 container.startLinkedSession(outcome.user)
                                 loading = false
                                 onLoggedIn()
+                            }
+                            is AuthOutcome.NeedsProfile -> {
+                                loading = false
+                                onNeedsProfile(outcome.uid, outcome.suggestedName, outcome.email)
                             }
                             is AuthOutcome.Failure -> {
                                 loading = false

@@ -126,6 +126,7 @@ fun RegisterScreen(onRegistered: () -> Unit, onHaveAccount: () -> Unit) {
                                 onRegistered()
                             }
                             is AuthOutcome.Failure -> generalError = outcome.message
+                            is AuthOutcome.NeedsProfile -> { /* register never returns NeedsProfile */ }
                         }
                     }
                 },

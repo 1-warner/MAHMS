@@ -32,6 +32,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 sealed class AuthOutcome {
     data class Success(val user: UserEntity, val offline: Boolean = false) : AuthOutcome()
     data class Failure(val message: String) : AuthOutcome()
+    /** Returned when a first-time Google user has no Firestore profile yet. */
+    data class NeedsProfile(val uid: String, val suggestedName: String, val email: String) : AuthOutcome()
 }
 
 /**
@@ -129,9 +131,18 @@ class FirebaseAuthRepository(
                 val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
                 auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
                 AppLog.i("Auth", "Google single sign-on accepted by Firebase")
-                val email = auth.currentUser?.email?.lowercase()
+                val fb = auth.currentUser
+                    ?: return AuthOutcome.Failure("Sign-in failed. Please try again.")
+                val email = fb.email?.lowercase()
                     ?: return AuthOutcome.Failure("Your Google account has no email address.")
-                finishLogin(email, password = "")
+                // Brand-new Google user: no Firestore profile yet — ask them to complete it.
+                if (fetchProfile(fb.uid) == ProfileResult.Missing) {
+                    val existingLocal = users.findByEmail(email)
+                    val suggestedName = existingLocal?.fullName ?: fb.displayName ?: email.substringBefore('@')
+                    AuthOutcome.NeedsProfile(fb.uid, suggestedName, email)
+                } else {
+                    finishLogin(email, password = "")
+                }
             } else {
                 AuthOutcome.Failure("Unsupported sign-in credential.")
             }
@@ -139,6 +150,21 @@ class FirebaseAuthRepository(
             AuthOutcome.Failure("Google sign-in was cancelled.")
         } catch (e: NoCredentialException) {
             AuthOutcome.Failure("No Google account found on this device. Add one in Settings and retry.")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AuthOutcome.Failure(friendly(e))
+        }
+    }
+
+    /** Called from CompleteProfileScreen after a first-time Google sign-in. */
+    suspend fun completeGoogleProfile(uid: String, name: String, email: String, phone: String, role: String): AuthOutcome {
+        return try {
+            writeProfile(uid, name, email, phone, role)
+            val local = users.upsert(name, email, phone, "", role)
+            cloud.syncAll(includeStaffData = role != Role.PATIENT.label)
+            AppLog.i("Auth", "Google profile completed as $role")
+            AuthOutcome.Success(local)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -15,6 +15,12 @@ sealed class Screen(val route: String) {
     data object PharmacistHome : Screen("pharmacist_home")
     data object ResponderHome : Screen("responder_home")
 
+    data object CompleteProfile : Screen("complete_profile/{uid}/{name}/{email}") {
+        fun route(uid: String, name: String, email: String) =
+            "complete_profile/${encode(uid)}/${encode(name)}/${encode(email)}"
+        private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
+    }
+
     data object Settings : Screen("settings")
     data object Help : Screen("help")
 

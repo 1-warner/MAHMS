@@ -12,6 +12,7 @@ import com.doodoobops.mahms.utils.AppLog
 import com.doodoobops.mahms.ui.help.HelpScreen
 import com.doodoobops.mahms.ui.settings.SettingsScreen
 import com.doodoobops.mahms.ui.admin.AdminHost
+import com.doodoobops.mahms.ui.auth.CompleteProfileScreen
 import com.doodoobops.mahms.ui.auth.LoginScreen
 import com.doodoobops.mahms.ui.auth.PostSplashScreen
 import com.doodoobops.mahms.ui.auth.RegisterScreen
@@ -80,7 +81,28 @@ fun MahmsNavGraph(navController: NavHostController) {
         }
 
         composable(Screen.Login.route) {
-            LoginScreen(onLoggedIn = { goHome() })
+            LoginScreen(
+                onLoggedIn = { goHome() },
+                onNeedsProfile = { uid, name, email ->
+                    navController.navigate(Screen.CompleteProfile.route(uid, name, email)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+
+        composable(
+            route = Screen.CompleteProfile.route,
+            arguments = listOf(
+                androidx.navigation.navArgument("uid") { type = androidx.navigation.NavType.StringType },
+                androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType },
+                androidx.navigation.navArgument("email") { type = androidx.navigation.NavType.StringType },
+            ),
+        ) { back ->
+            val uid   = back.arguments?.getString("uid").orEmpty()
+            val name  = java.net.URLDecoder.decode(back.arguments?.getString("name").orEmpty(), "UTF-8")
+            val email = java.net.URLDecoder.decode(back.arguments?.getString("email").orEmpty(), "UTF-8")
+            CompleteProfileScreen(uid = uid, suggestedName = name, email = email, onComplete = { goHome() })
         }
 
         composable(Screen.PatientHome.route) {
