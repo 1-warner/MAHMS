@@ -31,7 +31,8 @@ class ValidationUtilsTest {
 
     @Test fun phone_invalid_isRejected() {
         assertEquals("Phone number is required", ValidationUtils.phoneError(""))
-        listOf("12345", "+26377234567", "0872345678", "abcdefghij").forEach {
+        // Too short (<7 digits), too long (>15 digits), or non-numeric
+        listOf("12345", "1234567890123456", "abcdefghij", "+abc").forEach {
             assertNotNull("'$it' should be rejected", ValidationUtils.phoneError(it))
         }
     }
